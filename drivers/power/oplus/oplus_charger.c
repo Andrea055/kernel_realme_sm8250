@@ -5610,9 +5610,9 @@ void oplus_chg_set_input_current_limit(struct oplus_chg_chip *chip)
 	}
 #endif
 	switch (chip->charger_type) {
-	case POWER_SUPPLY_TYPE_UNKNOWN:
-		return;
-	case POWER_SUPPLY_TYPE_USB:
+		case POWER_SUPPLY_TYPE_UNKNOWN:
+			return;
+		case POWER_SUPPLY_TYPE_USB:
 #ifdef CONFIG_FORCE_FAST_CHARGE
 			if (force_fast_charge > 0)
 			{
@@ -5623,20 +5623,17 @@ void oplus_chg_set_input_current_limit(struct oplus_chg_chip *chip)
 				current_limit = chip->limits.input_current_usb_ma;	
 			}
 #else
-		current_limit = chip->limits.input_current_usb_ma;
+			current_limit = chip->limits.input_current_usb_ma;
 #endif
-		break;
-	case POWER_SUPPLY_TYPE_USB_DCP:
-		current_limit = chip->limits.input_current_charger_ma;
-		break;
-	case POWER_SUPPLY_TYPE_USB_CDP:
-		current_limit = chip->limits.input_current_cdp_ma;
-		break;
-	case POWER_SUPPLY_TYPE_USB_PD_SDP:
-		current_limit = chip->limits.input_current_charger_ma;
-		break;
-	default:
-		return;
+			break;
+		case POWER_SUPPLY_TYPE_USB_DCP:
+			current_limit = chip->limits.input_current_charger_ma;
+			break;
+		case POWER_SUPPLY_TYPE_USB_CDP:
+			current_limit = chip->limits.input_current_cdp_ma;
+			break;
+		default:
+			return;
 	}
 
 	if ((chip->chg_ctrl_by_lcd) && (chip->led_on)) {
