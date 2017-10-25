@@ -28,6 +28,38 @@ struct completion {
 	wait_queue_head_t wait;
 };
 
+#ifdef CONFIG_LOCKDEP_COMPLETIONS
+static inline void complete_acquire(struct completion *x)
+{
+	lock_acquire_exclusive((struct lockdep_map *)&x->map, 0, 0, NULL, _RET_IP_);
+}
+
+static inline void complete_release(struct completion *x)
+{
+	lock_release((struct lockdep_map *)&x->map, 0, _RET_IP_);
+}
+
+static inline void complete_release_commit(struct completion *x)
+{
+	lock_commit_crosslock((struct lockdep_map *)&x->map);
+}
+
+#define init_completion_map(x, m)					\
+do {									\
+	lockdep_init_map_crosslock((struct lockdep_map *)&(x)->map,	\
+			(m)->name, (m)->key, 0);				\
+	__init_completion(x);						\
+} while (0)
+
+#define init_completion(x)						\
+do {									\
+	static struct lock_class_key __key;				\
+	lockdep_init_map_crosslock((struct lockdep_map *)&(x)->map,	\
+			"(complete)" #x,				\
+			&__key, 0);					\
+	__init_completion(x);						\
+} while (0)
+#else
 #define init_completion_map(x, m) __init_completion(x)
 #define init_completion(x) __init_completion(x)
 static inline void complete_acquire(struct completion *x) {}
@@ -35,6 +67,7 @@ static inline void complete_release(struct completion *x) {}
 
 #define COMPLETION_INITIALIZER(work) \
 	{ 0, __WAIT_QUEUE_HEAD_INITIALIZER((work).wait) }
+#endif
 
 #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
 	(*({ init_completion_map(&(work), &(map)); &(work); }))
