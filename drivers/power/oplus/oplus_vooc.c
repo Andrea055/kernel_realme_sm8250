@@ -34,7 +34,13 @@
 #define OPLUS_VOOC_BCC_UPDATE_INTERVAL		round_jiffies_relative(msecs_to_jiffies(OPLUS_VOOC_BCC_UPDATE_TIME))
 
 extern int charger_abnormal_log;
-#define vooc_xlog_printk(num, ...) chg_debug(__VA_ARGS__)
+extern int enable_charger_log;
+#define vooc_xlog_printk(num, fmt, ...) \
+	do { \
+		if (enable_charger_log >= (int)num) { \
+			printk(KERN_NOTICE pr_fmt("[OPLUS_CHG][%s]"fmt), __func__, ##__VA_ARGS__);\
+	} \
+} while (0)
 
 
 static struct oplus_vooc_chip *g_vooc_chip = NULL;
@@ -2070,8 +2076,8 @@ void fw_update_thread(struct work_struct *work)
 		} while((ret < 0) && (--retry > 0));
 		chg_debug(" retry times %d, chip->fw_path[%s]\n", 5 - retry, chip->fw_path);
 		if(!ret) {
-			chip->firmware_data =  fw->data + 80 /* header */;
-			chip->fw_data_count =  fw->size - 80 /* header */ - 128 /* footer */;
+			chip->firmware_data =  fw->data;
+			chip->fw_data_count =  fw->size;
 			chip->fw_data_version = chip->firmware_data[chip->fw_data_count - 4];
 			chg_debug("count:0x%x, version:0x%x\n",
 				chip->fw_data_count,chip->fw_data_version);
@@ -2133,8 +2139,8 @@ void fw_update_thread_fix(struct work_struct *work)
 		} while ((ret < 0) && (--retry > 0));
 		chg_debug(" retry times %d, chip->fw_path[%s]\n", 5 - retry, chip->fw_path);
 		if(!ret) {
-			chip->firmware_data =  fw->data + 80 /* header */;
-			chip->fw_data_count =  fw->size - 80 /* header */ - 128 /* footer */;
+			chip->firmware_data =  fw->data;
+			chip->fw_data_count =  fw->size;
 			chip->fw_data_version = chip->firmware_data[chip->fw_data_count - 4];
 			chg_debug("count:0x%x, version:0x%x\n",
 				chip->fw_data_count, chip->fw_data_version);

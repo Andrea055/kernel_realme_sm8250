@@ -181,7 +181,8 @@ static FORCE_INLINE int LZ4_decompress_generic(
 				}
 			}
 
-			memcpy(op, ip, length);
+			LZ4_memcpy(op, ip, length);
+
 			ip += length;
 			op += length;
 			/* Necessarily EOF, due to parsing restrictions */

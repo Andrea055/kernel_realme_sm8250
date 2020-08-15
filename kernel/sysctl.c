@@ -97,6 +97,10 @@
 #include <linux/nmi.h>
 #endif
 
+// #ifdef CONFIG_OPLUS_MULTI_KSWAPD
+#include <linux/multi_kswapd.h>
+// #endif
+
 #if defined(CONFIG_SYSCTL)
 
 /* External variables not in a header file. */
@@ -143,7 +147,7 @@ static int ten_thousand = 10000;
 #ifdef CONFIG_PERF_EVENTS
 static int six_hundred_forty_kb = 640 * 1024;
 #endif
-static int max_kswapd_threads = MAX_KSWAPD_THREADS;
+int max_kswapd_threads = MAX_KSWAPD_THREADS;
 static int two_hundred_fifty_five = 255;
 static int __maybe_unused two_hundred_million = 200000000;
 

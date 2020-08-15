@@ -14,7 +14,13 @@
 
 
 
-#define adapter_xlog_printk(num, ...) chg_debug(__VA_ARGS__)
+extern int enable_charger_log;
+#define adapter_xlog_printk(num, fmt, ...) \
+        do { \
+                if (enable_charger_log >= (int)num) { \
+                        printk(KERN_NOTICE pr_fmt("[OPLUS_CHG][%s]"fmt), __func__, ##__VA_ARGS__);\
+        } \
+} while (0)
 
 
 static struct oplus_adapter_chip *g_adapter_chip = NULL;

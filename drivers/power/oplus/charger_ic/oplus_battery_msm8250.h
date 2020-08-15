@@ -8,15 +8,13 @@
 #include <linux/alarmtimer.h>
 #include <linux/ktime.h>
 #include <linux/types.h>
-#include <linux/timer.h>
 #include <linux/interrupt.h>
 #include <linux/irqreturn.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/consumer.h>
 #include <linux/extcon-provider.h>
-#include <linux/usb/typec.h>
-#include <../drivers/power/supply/qcom/storm-watch.h>
-#include <../drivers/power/supply/qcom/battery.h>
+#include "../../supply/qcom/storm-watch.h"
+#include "../../supply/qcom/battery.h"
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 #include <linux/time.h>
@@ -85,7 +83,6 @@ enum print_reason {
 #define JEITA_ARB_VOTER			"JEITA_ARB_VOTER"
 #define MOISTURE_VOTER			"MOISTURE_VOTER"
 #define HVDCP2_ICL_VOTER		"HVDCP2_ICL_VOTER"
-#define HVDCP2_12V_ICL_VOTER		"HVDCP2_12V_ICL_VOTER"
 #define AICL_THRESHOLD_VOTER		"AICL_THRESHOLD_VOTER"
 #define USBOV_DBC_VOTER			"USBOV_DBC_VOTER"
 #define CHG_TERMINATION_VOTER		"CHG_TERMINATION_VOTER"
@@ -101,9 +98,7 @@ enum print_reason {
 #define WIRED_CONN_VOTER		"WIRED_CONN_VOTER"
 #define WLS_PL_CHARGING_VOTER		"WLS_PL_CHARGING_VOTER"
 #define ICL_CHANGE_VOTER		"ICL_CHANGE_VOTER"
-#define OVERHEAT_LIMIT_VOTER		"OVERHEAT_LIMIT_VOTER"
 #define WLCH_FFC_VOTER			"WLCH_FFC_VOTER"
-#define TYPEC_SWAP_VOTER		"TYPEC_SWAP_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
 #ifdef OPLUS_FEATURE_CHG_BASIC
@@ -147,7 +142,6 @@ enum print_reason {
 #define DCIN_ICL_MIN_UA			100000
 #define DCIN_ICL_MAX_UA			1500000
 #define DCIN_ICL_STEP_UA		100000
-#define ROLE_REVERSAL_DELAY_MS		500
 
 enum smb_mode {
 	PARALLEL_MASTER = 0,
@@ -440,9 +434,6 @@ struct smb_charger {
 	struct smb_chg_freq	chg_freq;
 	int			otg_delay_ms;
 	int			weak_chg_icl_ua;
-#ifndef OPLUS_FEATURE_CHG_BASIC
-	u32			sdam_base;
-#endif
 	bool			pd_not_supported;
 
 	/* locks */
@@ -452,8 +443,6 @@ struct smb_charger {
 	struct mutex		dcin_aicl_lock;
 	spinlock_t		typec_pr_lock;
 	struct mutex		adc_lock;
-	struct mutex		dpdm_lock;
-	struct mutex		typec_lock;
 
 	/* power supplies */
 	struct power_supply		*batt_psy;
@@ -478,18 +467,11 @@ struct smb_charger {
 
 	/* CC Mode */
 	int	adapter_cc_mode;
-	int	thermal_overheat;
 
 	/* regulators */
 	struct smb_regulator	*vbus_vreg;
 	struct smb_regulator	*vconn_vreg;
 	struct regulator	*dpdm_reg;
-
-	/* typec */
-	struct typec_port	*typec_port;
-	struct typec_capability	typec_caps;
-	struct typec_partner	*typec_partner;
-	struct typec_partner_desc typec_partner_desc;
 
 	/* votables */
 	struct votable		*dc_suspend_votable;
@@ -508,7 +490,6 @@ struct smb_charger {
 	struct votable		*limited_irq_disable_votable;
 	struct votable		*hdc_irq_disable_votable;
 	struct votable		*temp_change_irq_disable_votable;
-	struct votable		*qnovo_disable_votable;
 
 	/* work */
 	struct work_struct	bms_update_work;
@@ -530,7 +511,6 @@ struct smb_charger {
 	struct delayed_work	usbov_dbc_work;
 	struct delayed_work	pr_swap_detach_work;
 	struct delayed_work	pr_lock_clear_work;
-	struct delayed_work	role_reversal_check;
 #ifdef OPLUS_CUSTOM_OP_DEF
 	struct delayed_work	reset_rd_work;
 #endif
@@ -539,8 +519,6 @@ struct smb_charger {
 	struct alarm		moisture_protection_alarm;
 	struct alarm		chg_termination_alarm;
 	struct alarm		dcin_aicl_alarm;
-
-	struct timer_list	apsd_timer;
 
 	struct charger_param	chg_param;
 	/* secondary charger config */
@@ -575,7 +553,6 @@ struct smb_charger {
 	bool			ok_to_pd;
 	bool			typec_legacy;
 	bool			typec_irq_en;
-	bool			typec_role_swap_failed;
 	struct	usbpd	*oplus_pd;
 	struct	usbpd_svid_handler	oplus_svid_handler;
 	/* cached status */
@@ -594,21 +571,18 @@ struct smb_charger {
 	bool			soc_ready_check;
 	bool			step_chg_enabled;
 	bool			sw_jeita_enabled;
-	bool			jeita_arb_enable;
 	bool			typec_legacy_use_rp_icl;
 	bool			is_hdc;
 	bool			chg_done;
 	int			connector_type;
 	bool			otg_en;
 	bool			suspend_input_on_debug_batt;
-	bool			fake_chg_status_on_debug_batt;
 	int			default_icl_ua;
 	int			otg_cl_ua;
 	bool			uusb_apsd_rerun_done;
 	bool			typec_present;
 	int			fake_input_current_limited;
 	int			typec_mode;
-	int			dr_mode;
 	int			usb_icl_change_irq_enabled;
 	u32			jeita_status;
 	u8			float_cfg;
@@ -656,19 +630,13 @@ struct smb_charger {
 	int			charge_full_cc;
 	int			cc_soc_ref;
 	int			last_cc_soc;
-	int			term_vbat_uv;
 	int			usbin_forced_max_uv;
 	int			init_thermal_ua;
 	u32			comp_clamp_level;
 	int			wls_icl_ua;
-	int			cutoff_count;
 	bool			dcin_aicl_done;
 	bool			hvdcp3_standalone_config;
-	bool			dcin_icl_user_set;
-	bool			dpdm_enabled;
 	bool			low_voltage_charger;
-	bool			apsd_ext_timeout;
-	bool			qc3p5_detected;
 
 	/* workaround flag */
 	u32			wa_flags;
@@ -1018,10 +986,6 @@ int smblib_get_die_health(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_smb_health(struct smb_charger *chg);
 int smblib_get_prop_connector_health(struct smb_charger *chg);
-int smblib_set_prop_thermal_overheat(struct smb_charger *chg,
-			       int therm_overheat);
-int smblib_get_prop_input_current_max(struct smb_charger *chg,
-				  union power_supply_propval *val);
 int smblib_get_skin_temp_status(struct smb_charger *chg);
 int smblib_get_prop_vph_voltage_now(struct smb_charger *chg,
 				union power_supply_propval *val);
@@ -1047,7 +1011,6 @@ int smblib_set_prop_rechg_soc_thresh(struct smb_charger *chg,
 				const union power_supply_propval *val);
 void smblib_suspend_on_debug_battery(struct smb_charger *chg);
 int smblib_rerun_apsd_if_required(struct smb_charger *chg);
-void smblib_rerun_apsd(struct smb_charger *chg);
 int smblib_get_prop_fcc_delta(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_thermal_threshold(struct smb_charger *chg, u16 addr, int *val);
@@ -1061,8 +1024,6 @@ int smblib_get_prop_pr_swap_in_progress(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_set_prop_pr_swap_in_progress(struct smb_charger *chg,
 				const union power_supply_propval *val);
-int smblib_typec_port_type_set(const struct typec_capability *cap,
-					enum typec_port_type type);
 int smblib_get_prop_from_bms(struct smb_charger *chg,
 				enum power_supply_property psp,
 				union power_supply_propval *val);
