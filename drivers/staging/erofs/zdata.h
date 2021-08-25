@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (C) 2018 HUAWEI, Inc.
- *             http://www.huawei.com/
- * Created by Gao Xiang <gaoxiang25@huawei.com>
+ *             https://www.huawei.com/
  */
 #ifndef __EROFS_FS_ZDATA_H
 #define __EROFS_FS_ZDATA_H
@@ -10,11 +9,6 @@
 #include "internal.h"
 #include "zpvec.h"
 
-/*
- *  - 0x6A110C8D ('pallocated', Z_EROFS_MAPPING_PREALLOCATED) -
- * preallocated cached pages, and will be added into managed cache space
- */
-#define Z_EROFS_MAPPING_PREALLOCATED	((void *)0x6A110C8D)
 #define Z_EROFS_NR_INLINE_PAGEVECS      3
 
 /*
@@ -89,7 +83,8 @@ struct z_erofs_pcluster {
 
 #define Z_EROFS_WORKGROUP_SIZE  sizeof(struct z_erofs_pcluster)
 
-struct z_erofs_unzip_io {
+struct z_erofs_decompressqueue {
+	struct super_block *sb;
 	atomic_t pending_bios;
 	z_erofs_next_pcluster_t head;
 
@@ -97,11 +92,6 @@ struct z_erofs_unzip_io {
 		wait_queue_head_t wait;
 		struct work_struct work;
 	} u;
-};
-
-struct z_erofs_unzip_io_sb {
-	struct z_erofs_unzip_io io;
-	struct super_block *sb;
 };
 
 #define MNGD_MAPPING(sbi)	((sbi)->managed_cache->i_mapping)
