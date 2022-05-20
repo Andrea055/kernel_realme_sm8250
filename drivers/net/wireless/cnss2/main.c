@@ -2725,6 +2725,13 @@ cnss_use_nv_mac(struct cnss_plat_data *plat_priv)
 				     "use-nv-mac");
 }
 
+int hdd_module_init(void);
+static void wlan_init_worker(struct work_struct *work)
+{
+	hdd_module_init();
+}
+static DECLARE_WORK(wlan_init_work, wlan_init_worker);
+
 static int cnss_probe(struct platform_device *plat_dev)
 {
 	int ret = 0;
@@ -2837,6 +2844,7 @@ static int cnss_probe(struct platform_device *plat_dev)
 #endif /* OPLUS_FEATURE_WIFI_DCS_SWITCH */
 
 	cnss_pr_info("Platform driver probed successfully.\n");
+	schedule_work(&wlan_init_work);
 
 	return 0;
 
