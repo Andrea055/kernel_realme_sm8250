@@ -319,11 +319,14 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 
 	dwc3_gadget_del_and_unmap_request(dep, req, status);
 
-	if (usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
-					(list_empty(&dep->started_list))) {
-		dep->flags |= DWC3_EP_PENDING_REQUEST;
-		dbg_event(dep->number, "STARTEDLISTEMPTY", 0);
-	}
+	if (!dep->endpoint.desc)
+		return;
+
+	if (usb_endpoint_xfer_isoc(dep->endpoint.desc)) {
+		if (list_empty(&dep->started_list)) {
+			dep->flags |= DWC3_EP_PENDING_REQUEST;
+			dbg_event(dep->number, "STARTEDLISTEMPTY", 0);
+		}
 
 	spin_unlock(&dwc->lock);
 	usb_gadget_giveback_request(&dep->endpoint, &req->request);
