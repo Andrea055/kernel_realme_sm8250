@@ -256,13 +256,7 @@ struct dsi_panel_oplus_privite {
 	bit(7):ultra low power aod
 ********************************************/
 	u32 fp_type;
-	// Add for apollo support
-	bool is_apollo_support;
-	u32 sync_brightness_level;
-	bool dc_apollo_sync_enable;
-	u32 dc_apollo_sync_brightness_level;
-	u32 dc_apollo_sync_brightness_level_pcc;
-	u32 dc_apollo_sync_brightness_level_pcc_min;
+	u32 aod_low_brightness_threshold;
 };
 #endif /* OPLUS_BUG_STABILITY */
 
@@ -323,6 +317,10 @@ struct dsi_panel {
 	int ba_count;
 	struct oplus_brightness_alpha *dc_ba_seq;
 	int dc_ba_count;
+	struct oplus_brightness_alpha *aod_high_ba_seq;
+	int aod_high_ba_count;
+	struct oplus_brightness_alpha *aod_low_ba_seq;
+	int aod_low_ba_count;
 
 	struct dsi_panel_oplus_privite oplus_priv;
 	int panel_id2;
