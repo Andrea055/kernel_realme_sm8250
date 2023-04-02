@@ -1,10 +1,10 @@
 # We can build either as part of a standalone Kernel build or as
 # an external module.  Determine which mechanism is being used
-ifeq ($(MODNAME),)
+# ifeq ($(MODNAME),)
 	KERNEL_BUILD := 1
-else
-	KERNEL_BUILD := 0
-endif
+# else
+# 	KERNEL_BUILD := 0
+# endif
 
 ifeq ($(KERNEL_BUILD), 1)
 	# These are configurable via Kconfig for kernel-based builds
@@ -59,7 +59,7 @@ EXTRA_CFLAGS += -Wheader-guard
 endif
 
 # Module information used by KBuild framework
-obj-m += audio_extend_dlkm.o
+obj-y += audio_extend_dlkm.o
 audio_extend_dlkm-y := $(AUDIO_EXTEND_OBJS)
 
 # inject some build related information

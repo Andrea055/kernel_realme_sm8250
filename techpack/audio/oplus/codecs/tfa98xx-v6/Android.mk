@@ -4,11 +4,11 @@
 
 # Check if this driver needs be built for current target
 ifeq ($(call is-board-platform,kona),true)
-AUDIO_SELECT  := CONFIG_SND_SOC_KONA=m
+AUDIO_SELECT  := CONFIG_SND_SOC_KONA=y
 endif
 
 ifeq ($(call is-board-platform,lito),true)
-AUDIO_SELECT  := CONFIG_SND_SOC_LITO=m
+AUDIO_SELECT  := CONFIG_SND_SOC_LITO=y
 endif
 
 AUDIO_CHIPSET := audio
@@ -19,7 +19,7 @@ LOCAL_PATH := $(call my-dir)
 ifneq ($(findstring vendor,$(LOCAL_PATH)),)
 
 #ifneq ($(findstring opensource,$(LOCAL_PATH)),)
-	AUDIO_BLD_DIR := $(shell pwd)/vendor/qcom/opensource/audio-kernel
+	AUDIO_BLD_DIR := ../../../
 #endif # opensource
 
 DLKM_DIR := $(TOP)/device/qcom/common/dlkm
