@@ -3574,6 +3574,7 @@ struct wifi_interface_info {
 	uint8_t apCountryStr[CFG_COUNTRY_CODE_LEN];
 	/* country string for this association */
 	uint8_t countryStr[CFG_COUNTRY_CODE_LEN];
+	uint8_t time_slice_duty_cycle;
 };
 
 /**
@@ -5405,6 +5406,7 @@ struct ppet_hdr {
 	((uint8_t)(b0) | ((b1) << 1) | ((b2) << 2) |  ((b3) << 3) | \
 	((b4) << 4) | ((b5) << 5) | ((b6) << 6))
 #define HE_CH_WIDTH_CLR_BIT(ch_wd, bit)      (((ch_wd) >> (bit)) & ~1)
+
 /*
  * MCS values are interpreted as in IEEE 11ax-D1.4 spec onwards
  * +-----------------------------------------------------+
