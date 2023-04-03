@@ -27,9 +27,8 @@ static struct page *erofs_read_inode(struct inode *inode,
 	unsigned int ifmt;
 	int err;
 
-	const unsigned int ifmt = le16_to_cpu(dic->i_format);
-	struct erofs_sb_info *sbi = EROFS_SB(inode->i_sb);
-	erofs_blk_t nblks = 0;
+	blkaddr = erofs_blknr(inode_loc);
+	*ofs = erofs_blkoff(inode_loc);
 
 	erofs_dbg("%s, reading inode nid %llu at %u of blkaddr %u",
 		  __func__, vi->nid, *ofs, blkaddr);
@@ -170,12 +169,10 @@ static struct page *erofs_read_inode(struct inode *inode,
 		goto err_out;
 	}
 
-	if (!nblks)
-		/* measure inode.i_blocks as generic filesystems */
-		inode->i_blocks = roundup(inode->i_size, EROFS_BLKSIZ) >> 9;
-	else
-		inode->i_blocks = nblks << LOG_SECTORS_PER_BLOCK;
-	return 0;
+	inode->i_mtime.tv_sec = inode->i_ctime.tv_sec;
+	inode->i_atime.tv_sec = inode->i_ctime.tv_sec;
+	inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec;
+	inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec;
 
 	if (!nblks)
 		/* measure inode.i_blocks as generic filesystems */
@@ -190,7 +187,10 @@ bogusimode:
 	err = -EFSCORRUPTED;
 err_out:
 	DBG_BUGON(1);
-	return -EFSCORRUPTED;
+	kfree(copied);
+	unlock_page(page);
+	put_page(page);
+	return ERR_PTR(err);
 }
 
 static int erofs_fill_symlink(struct inode *inode, void *data,
@@ -233,21 +233,10 @@ static int erofs_fill_inode(struct inode *inode, int isdir)
 {
 	struct erofs_inode *vi = EROFS_I(inode);
 	struct page *page;
-	void *data;
-	int err;
-	erofs_blk_t blkaddr;
 	unsigned int ofs;
-	erofs_off_t inode_loc;
+	int err = 0;
 
 	trace_erofs_fill_inode(inode, isdir);
-	inode_loc = iloc(EROFS_SB(sb), vi->nid);
-	blkaddr = erofs_blknr(inode_loc);
-	ofs = erofs_blkoff(inode_loc);
-
-	erofs_dbg("%s, reading inode nid %llu at %u of blkaddr %u",
-		  __func__, vi->nid, ofs, blkaddr);
-
-	page = erofs_get_meta_page(sb, blkaddr);
 
 	/* read inode base data from disk */
 	page = erofs_read_inode(inode, &ofs);
