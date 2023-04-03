@@ -480,8 +480,7 @@ static int z_erofs_register_collection(struct z_erofs_collector *clt,
 	struct z_erofs_collection *cl;
 	int err;
 
-	if (!(map->m_flags & EROFS_MAP_ENCODED) ||
-	    (!ztailpacking && !(map->m_pa >> PAGE_SHIFT))) {
+	if (!(map->m_flags & EROFS_MAP_ENCODED)) {
 		DBG_BUGON(1);
 		return -EFSCORRUPTED;
 	}
