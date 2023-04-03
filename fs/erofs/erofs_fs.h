@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2017-2018 HUAWEI, Inc.
  *             https://www.huawei.com/
+ * Copyright (C) 2021, Alibaba Cloud
  */
 #ifndef __EROFS_FS_H
 #define __EROFS_FS_H
@@ -12,18 +13,25 @@
 #define EROFS_SUPER_OFFSET      1024
 
 #define EROFS_FEATURE_COMPAT_SB_CHKSUM          0x00000001
+#define EROFS_FEATURE_COMPAT_MTIME              0x00000002
 
 /*
  * Any bits that aren't in EROFS_ALL_FEATURE_INCOMPAT should
  * be incompatible with this kernel version.
  */
-#define EROFS_FEATURE_INCOMPAT_LZ4_0PADDING	0x00000001
+#define EROFS_FEATURE_INCOMPAT_ZERO_PADDING	0x00000001
 #define EROFS_FEATURE_INCOMPAT_COMPR_CFGS	0x00000002
 #define EROFS_FEATURE_INCOMPAT_BIG_PCLUSTER	0x00000002
+#define EROFS_FEATURE_INCOMPAT_CHUNKED_FILE	0x00000004
+#define EROFS_FEATURE_INCOMPAT_DEVICE_TABLE	0x00000008
+#define EROFS_FEATURE_INCOMPAT_COMPR_HEAD2	0x00000008
 #define EROFS_ALL_FEATURE_INCOMPAT		\
-	(EROFS_FEATURE_INCOMPAT_LZ4_0PADDING | \
+	(EROFS_FEATURE_INCOMPAT_ZERO_PADDING | \
 	 EROFS_FEATURE_INCOMPAT_COMPR_CFGS | \
-	 EROFS_FEATURE_INCOMPAT_BIG_PCLUSTER)
+	 EROFS_FEATURE_INCOMPAT_BIG_PCLUSTER | \
+	 EROFS_FEATURE_INCOMPAT_CHUNKED_FILE | \
+	 EROFS_FEATURE_INCOMPAT_DEVICE_TABLE | \
+	 EROFS_FEATURE_INCOMPAT_COMPR_HEAD2)
 
 #define EROFS_SB_EXTSLOT_SIZE	16
 
@@ -38,8 +46,8 @@ struct erofs_super_block {
 	__le16 root_nid;	/* nid of root directory */
 	__le64 inos;            /* total valid ino # (== f_files - f_favail) */
 
-	__le64 build_time;      /* inode v1 time derivation */
-	__le32 build_time_nsec;	/* inode v1 time derivation in nano scale */
+	__le64 build_time;      /* compact inode time derivation */
+	__le32 build_time_nsec;	/* compact inode time derivation in ns scale */
 	__le32 blocks;          /* used for statfs */
 	__le32 meta_blkaddr;	/* start block address of metadata area */
 	__le32 xattr_blkaddr;	/* start block address of shared xattr area */
@@ -57,21 +65,24 @@ struct erofs_super_block {
 
 /*
  * erofs inode datalayout (i_format in on-disk inode):
- * 0 - inode plain without inline data A:
+ * 0 - uncompressed flat inode without tail-packing inline data:
  * inode, [xattrs], ... | ... | no-holed data
- * 1 - inode VLE compression B (legacy):
- * inode, [xattrs], extents ... | ...
- * 2 - inode plain with inline data C:
- * inode, [xattrs], last_inline_data, ... | ... | no-holed data
- * 3 - inode compression D:
+ * 1 - compressed inode with non-compact indexes:
+ * inode, [xattrs], [map_header], extents ... | ...
+ * 2 - uncompressed flat inode with tail-packing inline data:
+ * inode, [xattrs], tailpacking data, ... | ... | no-holed data
+ * 3 - compressed inode with compact indexes:
  * inode, [xattrs], map_header, extents ... | ...
- * 4~7 - reserved
+ * 4 - chunk-based inode with (optional) multi-device support:
+ * inode, [xattrs], chunk indexes ... | ...
+ * 5~7 - reserved
  */
 enum {
 	EROFS_INODE_FLAT_PLAIN			= 0,
 	EROFS_INODE_FLAT_COMPRESSION_LEGACY	= 1,
 	EROFS_INODE_FLAT_INLINE			= 2,
 	EROFS_INODE_FLAT_COMPRESSION		= 3,
+	EROFS_INODE_CHUNK_BASED			= 4,
 	EROFS_INODE_DATALAYOUT_MAX
 };
 
@@ -81,7 +92,7 @@ static inline bool erofs_inode_is_data_compressed(unsigned int datamode)
 		datamode == EROFS_INODE_FLAT_COMPRESSION_LEGACY;
 }
 
-/* bit definitions of inode i_advise */
+/* bit definitions of inode i_format */
 #define EROFS_I_VERSION_BITS            1
 #define EROFS_I_DATALAYOUT_BITS         3
 
@@ -90,6 +101,19 @@ static inline bool erofs_inode_is_data_compressed(unsigned int datamode)
 
 #define EROFS_I_ALL	\
 	((1 << (EROFS_I_DATALAYOUT_BIT + EROFS_I_DATALAYOUT_BITS)) - 1)
+
+/* indicate chunk blkbits, thus 'chunksize = blocksize << chunk blkbits' */
+#define EROFS_CHUNK_FORMAT_BLKBITS_MASK		0x001F
+/* with chunk indexes or just a 4-byte blkaddr array */
+#define EROFS_CHUNK_FORMAT_INDEXES		0x0020
+
+#define EROFS_CHUNK_FORMAT_ALL	\
+	(EROFS_CHUNK_FORMAT_BLKBITS_MASK | EROFS_CHUNK_FORMAT_INDEXES)
+
+struct erofs_inode_chunk_info {
+	__le16 format;		/* chunk blkbits, etc. */
+	__le16 reserved;
+};
 
 /* 32-byte reduced form of an ondisk inode */
 struct erofs_inode_compact {
@@ -102,12 +126,16 @@ struct erofs_inode_compact {
 	__le32 i_size;
 	__le32 i_reserved;
 	union {
-		/* file total compressed blocks for data mapping 1 */
+		/* total compressed blocks for compressed inodes */
 		__le32 compressed_blocks;
+		/* block address for uncompressed flat inodes */
 		__le32 raw_blkaddr;
 
 		/* for device files, used to indicate old/new device # */
 		__le32 rdev;
+
+		/* for chunk-based files, it contains the summary info */
+		struct erofs_inode_chunk_info c;
 	} i_u;
 	__le32 i_ino;           /* only used for 32-bit stat compatibility */
 	__le16 i_uid;
@@ -115,9 +143,9 @@ struct erofs_inode_compact {
 	__le32 i_reserved2;
 };
 
-/* 32 bytes on-disk inode */
+/* 32-byte on-disk inode */
 #define EROFS_INODE_LAYOUT_COMPACT	0
-/* 64 bytes on-disk inode */
+/* 64-byte on-disk inode */
 #define EROFS_INODE_LAYOUT_EXTENDED	1
 
 /* 64-byte complete form of an ondisk inode */
@@ -130,12 +158,16 @@ struct erofs_inode_extended {
 	__le16 i_reserved;
 	__le64 i_size;
 	union {
-		/* file total compressed blocks for data mapping 1 */
+		/* total compressed blocks for compressed inodes */
 		__le32 compressed_blocks;
+		/* block address for uncompressed flat inodes */
 		__le32 raw_blkaddr;
 
 		/* for device files, used to indicate old/new device # */
 		__le32 rdev;
+
+		/* for chunk-based files, it contains the summary info */
+		struct erofs_inode_chunk_info c;
 	} i_u;
 
 	/* only used for 32-bit stat compatibility */
@@ -143,8 +175,8 @@ struct erofs_inode_extended {
 
 	__le32 i_uid;
 	__le32 i_gid;
-	__le64 i_ctime;
-	__le32 i_ctime_nsec;
+	__le64 i_mtime;
+	__le32 i_mtime_nsec;
 	__le32 i_nlink;
 	__u8   i_reserved2[16];
 };
@@ -168,7 +200,7 @@ struct erofs_xattr_ibody_header {
 	__le32 h_reserved;
 	__u8   h_shared_count;
 	__u8   h_reserved2[7];
-	__le32 h_shared_xattrs[0];      /* shared xattr id array */
+	__le32 h_shared_xattrs[];       /* shared xattr id array */
 };
 
 /* Name indexes */
@@ -185,7 +217,7 @@ struct erofs_xattr_entry {
 	__u8   e_name_index;    /* attribute name index */
 	__le16 e_value_size;    /* size of attribute value */
 	/* followed by e_name and e_value */
-	char   e_name[0];       /* attribute name */
+	char   e_name[];        /* attribute name */
 };
 
 static inline unsigned int erofs_xattr_ibody_size(__le16 i_xattr_icount)
@@ -204,6 +236,19 @@ static inline unsigned int erofs_xattr_entry_size(struct erofs_xattr_entry *e)
 	return EROFS_XATTR_ALIGN(sizeof(struct erofs_xattr_entry) +
 				 e->e_name_len + le16_to_cpu(e->e_value_size));
 }
+
+/* represent a zeroed chunk (hole) */
+#define EROFS_NULL_ADDR			-1
+
+/* 4-byte block address array */
+#define EROFS_BLOCK_MAP_ENTRY_SIZE	sizeof(__le32)
+
+/* 8-byte inode chunk indexes */
+struct erofs_inode_chunk_index {
+	__le16 advise;		/* always 0, don't care for now */
+	__le16 device_id;	/* back-end storage id, always 0 for now */
+	__le32 blkaddr;		/* start block address of this inode chunk */
+};
 
 /* maximum supported size of a physical compression cluster */
 #define Z_EROFS_PCLUSTER_MAX_SIZE	(1024 * 1024)
@@ -251,35 +296,34 @@ struct z_erofs_map_header {
 #define Z_EROFS_VLE_LEGACY_HEADER_PADDING       8
 
 /*
- * Fixed-sized output compression ondisk Logical Extent cluster type:
- *    0 - literal (uncompressed) cluster
- *    1 - compressed cluster (for the head logical cluster)
- *    2 - compressed cluster (for the other logical clusters)
+ * Fixed-sized output compression on-disk logical cluster type:
+ *    0   - literal (uncompressed) lcluster
+ *    1,3 - compressed lcluster (for HEAD lclusters)
+ *    2   - compressed lcluster (for NONHEAD lclusters)
  *
  * In detail,
- *    0 - literal (uncompressed) cluster,
+ *    0 - literal (uncompressed) lcluster,
  *        di_advise = 0
- *        di_clusterofs = the literal data offset of the cluster
- *        di_blkaddr = the blkaddr of the literal cluster
+ *        di_clusterofs = the literal data offset of the lcluster
+ *        di_blkaddr = the blkaddr of the literal pcluster
  *
- *    1 - compressed cluster (for the head logical cluster)
- *        di_advise = 1
- *        di_clusterofs = the decompressed data offset of the cluster
- *        di_blkaddr = the blkaddr of the compressed cluster
+ *    1,3 - compressed lcluster (for HEAD lclusters)
+ *        di_advise = 1 or 3
+ *        di_clusterofs = the decompressed data offset of the lcluster
+ *        di_blkaddr = the blkaddr of the compressed pcluster
  *
- *    2 - compressed cluster (for the other logical clusters)
+ *    2 - compressed lcluster (for NONHEAD lclusters)
  *        di_advise = 2
  *        di_clusterofs =
- *           the decompressed data offset in its own head cluster
- *        di_u.delta[0] = distance to its corresponding head cluster
- *        di_u.delta[1] = distance to its corresponding tail cluster
- *                (di_advise could be 0, 1 or 2)
+ *           the decompressed data offset in its own HEAD lcluster
+ *        di_u.delta[0] = distance to this HEAD lcluster
+ *        di_u.delta[1] = distance to the next HEAD lcluster
  */
 enum {
 	Z_EROFS_VLE_CLUSTER_TYPE_PLAIN		= 0,
-	Z_EROFS_VLE_CLUSTER_TYPE_HEAD		= 1,
+	Z_EROFS_VLE_CLUSTER_TYPE_HEAD1		= 1,
 	Z_EROFS_VLE_CLUSTER_TYPE_NONHEAD	= 2,
-	Z_EROFS_VLE_CLUSTER_TYPE_RESERVED	= 3,
+	Z_EROFS_VLE_CLUSTER_TYPE_HEAD2		= 3,
 	Z_EROFS_VLE_CLUSTER_TYPE_MAX
 };
 
@@ -295,17 +339,16 @@ enum {
 
 struct z_erofs_vle_decompressed_index {
 	__le16 di_advise;
-	/* where to decompress in the head cluster */
+	/* where to decompress in the head lcluster */
 	__le16 di_clusterofs;
 
 	union {
-		/* for the head cluster */
+		/* for the HEAD lclusters */
 		__le32 blkaddr;
 		/*
-		 * for the rest clusters
-		 * eg. for 4k page-sized cluster, maximum 4K*64k = 256M)
-		 * [0] - pointing to the head cluster
-		 * [1] - pointing to the tail cluster
+		 * for the NONHEAD lclusters
+		 * [0] - distance to its HEAD lcluster
+		 * [1] - distance to the next HEAD lcluster
 		 */
 		__le16 delta[2];
 	} di_u;
@@ -346,9 +389,14 @@ static inline void erofs_check_ondisk_layout_definitions(void)
 	BUILD_BUG_ON(sizeof(struct erofs_inode_extended) != 64);
 	BUILD_BUG_ON(sizeof(struct erofs_xattr_ibody_header) != 12);
 	BUILD_BUG_ON(sizeof(struct erofs_xattr_entry) != 4);
+	BUILD_BUG_ON(sizeof(struct erofs_inode_chunk_info) != 4);
+	BUILD_BUG_ON(sizeof(struct erofs_inode_chunk_index) != 8);
 	BUILD_BUG_ON(sizeof(struct z_erofs_map_header) != 8);
 	BUILD_BUG_ON(sizeof(struct z_erofs_vle_decompressed_index) != 8);
 	BUILD_BUG_ON(sizeof(struct erofs_dirent) != 12);
+	/* keep in sync between 2 index structures for better extendibility */
+	BUILD_BUG_ON(sizeof(struct erofs_inode_chunk_index) !=
+		     sizeof(struct z_erofs_vle_decompressed_index));
 
 	BUILD_BUG_ON(BIT(Z_EROFS_VLE_DI_CLUSTER_TYPE_BITS) <
 		     Z_EROFS_VLE_CLUSTER_TYPE_MAX - 1);

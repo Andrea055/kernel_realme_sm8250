@@ -5,8 +5,6 @@
  */
 #include "internal.h"
 #include <linux/prefetch.h>
-#include <linux/uio.h>
-#include <linux/blkdev.h>
 
 #include <trace/events/erofs.h>
 
@@ -14,7 +12,7 @@ static void erofs_readendio(struct bio *bio)
 {
 	int i;
 	struct bio_vec *bvec;
-	blk_status_t err = bio->bi_status;
+	const blk_status_t err = bio->bi_status;
 
 	bio_for_each_segment_all(bvec, bio, i) {
 		struct page *page = bvec->bv_page;
@@ -327,36 +325,6 @@ static sector_t erofs_bmap(struct address_space *mapping, sector_t block)
 		return erofs_blknr(map.m_pa);
 
 	return 0;
-}
-
-static ssize_t erofs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
-{
-	struct address_space *mapping = iocb->ki_filp->f_mapping;
-	struct inode *inode = mapping->host;
-	loff_t offset = iocb->ki_pos;
-	int err;
-
-	err = check_direct_IO(inode, iter, offset);
-	if (err)
-		return err < 0 ? err : 0;
-
-	return __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev, iter,
-				    erofs_get_block, NULL, NULL,
-				    DIO_LOCKING | DIO_SKIP_HOLES);
-}
-
-static sector_t erofs_bmap(struct address_space *mapping, sector_t block)
-{
-	struct inode *inode = mapping->host;
-
-	if (EROFS_I(inode)->datalayout == EROFS_INODE_FLAT_INLINE) {
-		erofs_blk_t blks = i_size_read(inode) >> LOG_BLOCK_SIZE;
-
-		if (block >> LOG_SECTORS_PER_BLOCK >= blks)
-			return 0;
-	}
-
-	return generic_block_bmap(mapping, block, erofs_get_block);
 }
 
 /* for uncompressed (aligned) files and raw access for other files */
