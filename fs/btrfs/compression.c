@@ -422,12 +422,8 @@ static u64 bio_end_offset(struct bio *bio)
 
 static noinline int add_ra_bio_pages(struct inode *inode,
 				     u64 compressed_end,
-<<<<<<< HEAD
-				     struct compressed_bio *cb)
-=======
 				     struct compressed_bio *cb,
 				     int *memstall, unsigned long *pflags)
->>>>>>> 82e60d00b753 (fs: fix leaked psi pressure state)
 {
 	unsigned long end_index;
 	unsigned long pg_index;
@@ -478,16 +474,6 @@ static noinline int add_ra_bio_pages(struct inode *inode,
 			goto next;
 		}
 
-<<<<<<< HEAD
-		end = last_offset + PAGE_SIZE - 1;
-		/*
-		 * at this point, we have a locked page in the page cache
-		 * for these bytes in the file.  But, we have to make
-		 * sure they map to this compressed extent on disk.
-		 */
-		set_page_extent_mapped(page);
-		lock_extent(tree, last_offset, end);
-=======
 		if (!*memstall && PageWorkingset(page)) {
 			psi_memstall_enter(pflags);
 			*memstall = 1;
@@ -502,7 +488,7 @@ static noinline int add_ra_bio_pages(struct inode *inode,
 
 		page_end = (pg_index << PAGE_SHIFT) + PAGE_SIZE - 1;
 		lock_extent(tree, cur, page_end, NULL);
->>>>>>> 82e60d00b753 (fs: fix leaked psi pressure state)
+
 		read_lock(&em_tree->lock);
 		em = lookup_extent_mapping(em_tree, last_offset,
 					   PAGE_SIZE);
@@ -579,17 +565,11 @@ blk_status_t btrfs_submit_compressed_read(struct inode *inode, struct bio *bio,
 	u64 em_len;
 	u64 em_start;
 	struct extent_map *em;
-<<<<<<< HEAD
-	blk_status_t ret = BLK_STS_RESOURCE;
-	int faili = 0;
-	u32 *sums;
-=======
 	unsigned long pflags;
 	int memstall = 0;
 	blk_status_t ret;
 	int ret2;
 	int i;
->>>>>>> 82e60d00b753 (fs: fix leaked psi pressure state)
 
 	tree = &BTRFS_I(inode)->io_tree;
 	em_tree = &BTRFS_I(inode)->extent_tree;
@@ -632,7 +612,6 @@ blk_status_t btrfs_submit_compressed_read(struct inode *inode, struct bio *bio,
 	if (!cb->compressed_pages)
 		goto fail1;
 
-<<<<<<< HEAD
 	bdev = fs_info->fs_devices->latest_bdev;
 
 	for (pg_index = 0; pg_index < nr_pages; pg_index++) {
@@ -647,10 +626,7 @@ blk_status_t btrfs_submit_compressed_read(struct inode *inode, struct bio *bio,
 	faili = nr_pages - 1;
 	cb->nr_pages = nr_pages;
 
-	add_ra_bio_pages(inode, em_start + em_len, cb);
-=======
 	add_ra_bio_pages(inode, em_start + em_len, cb, &memstall, &pflags);
->>>>>>> 82e60d00b753 (fs: fix leaked psi pressure state)
 
 	/* include any pages we added in add_ra-bio_pages */
 	cb->len = bio->bi_iter.bi_size;
