@@ -53,6 +53,11 @@
 
 #include <linux/swapops.h>
 #include <linux/balloon_compaction.h>
+#include <linux/psi.h>
+#include <linux/debugfs.h>
+#include <linux/shmem_fs.h>
+#include <linux/pagevec.h>
+#include <linux/ctype.h>
 
 #if defined(OPLUS_FEATURE_PROCESS_RECLAIM) && defined(CONFIG_PROCESS_RECLAIM_ENHANCE)
 #include <linux/process_mm_reclaim.h>
@@ -5812,7 +5817,7 @@ static bool shrink_node(pg_data_t *pgdat, struct scan_control *sc)
 		 */
 		vmpressure(sc->gfp_mask, sc->target_mem_cgroup, true,
 			   sc->nr_scanned - nr_scanned,
-			   sc->nr_reclaimed - nr_reclaimed);
+			   sc->nr_reclaimed - nr_reclaimed, sc->order);
 
 		if (reclaim_state) {
 			sc->nr_reclaimed += reclaim_state->reclaimed_slab;
