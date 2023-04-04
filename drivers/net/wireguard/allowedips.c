@@ -214,18 +214,6 @@ static bool node_placement(struct allowedips_node __rcu *trie, const u8 *key,
 	return exact;
 }
 
-static inline void connect_node(struct allowedips_node __rcu **parent, u8 bit, struct allowedips_node *node)
-{
-	node->parent_bit_packed = (unsigned long)parent | bit;
-	rcu_assign_pointer(*parent, node);
-}
-
-static inline void choose_and_connect_node(struct allowedips_node *parent, struct allowedips_node *node)
-{
-	u8 bit = choose(parent, node->bits);
-	connect_node(&parent->bit[bit], bit, node);
-}
-
 static int add(struct allowedips_node __rcu **trie, u8 bits, const u8 *key,
 	       u8 cidr, struct wg_peer *peer, struct mutex *lock)
 {
