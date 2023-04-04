@@ -104,6 +104,7 @@
 #include <asm/tlbflush.h>
 
 #include <trace/events/sched.h>
+#include <linux/simple_lmk.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>
