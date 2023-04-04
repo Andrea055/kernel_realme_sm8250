@@ -76,6 +76,20 @@
 #include <asm/div64.h>
 #include "internal.h"
 
+#ifdef OPLUS_FEATURE_HEALTHINFO
+#ifdef CONFIG_OPLUS_MEM_MONITOR
+#include <linux/healthinfo/memory_monitor.h>
+#endif
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
+#if defined(OPLUS_FEATURE_MEMORY_ISOLATE) && defined(CONFIG_OPLUS_MEMORY_ISOLATE)
+#include <linux/memory_isolate.h>
+#endif /*OPLUS_FEATURE_MEMORY_ISOLATE*/
+
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+#include "multi_freearea.h"
+#endif
+
 atomic_long_t kswapd_waiters = ATOMIC_LONG_INIT(0);
 
 /* prevent >1 _updater_ of zone percpu pageset ->high and ->batch fields */
