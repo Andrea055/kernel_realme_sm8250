@@ -3121,9 +3121,6 @@ int ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	hba->lrb[task_tag].compl_time_stamp = ktime_set(0, 0);
 	ufshcd_clk_scaling_start_busy(hba);
 	__set_bit(task_tag, &hba->outstanding_reqs);
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-	recordRequestCnt(&hba->signalCtrl);
-#endif
 	ufshcd_writel(hba, 1 << task_tag, REG_UTP_TRANSFER_REQ_DOOR_BELL);
 	/* Make sure that doorbell is committed immediately */
 	wmb();
@@ -6689,33 +6686,7 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 				ufshcd_vops_pm_qos_req_end(hba, cmd->request,
 					false);
 			}
-#ifdef OPLUS_FEATURE_UFS_SHOW_LATENCY
-			if (cmd->request) {
-				/* Update IO svc time latency histogram */
-				u_int64_t delta_us = ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
-				struct request *req = cmd->request;
-				unsigned int option = req_op(req);
-				if (hba->latency_hist_enabled &&(!blk_rq_is_passthrough(req))){
-					if(option == REQ_OP_WRITE || option == REQ_OP_WRITE_SAME){
-						io_update_latency_hist(&hba->io_lat_write, delta_us, blk_rq_sectors(req));
-					}else if(option == REQ_OP_READ){
-						io_update_latency_hist(&hba->io_lat_read, delta_us, blk_rq_sectors(req));
-					}else{
-						io_update_latency_hist(&hba->io_lat_other, delta_us, blk_rq_sectors(req));
-					}
-				}
-#ifdef CONFIG_TRACEPOINTS
-				if(trace_ufshcd_command_enabled()){
-					if((5000 < delta_us) && bio_has_data(req->bio)){
-						trace_printk("ufs_io_latency:%06lld us, io_type:%s, LBA:%08x, size:%d\n",
-							delta_us, (rq_data_dir(req) == READ) ? "R" : "W",
-							(unsigned int)req->bio->bi_iter.bi_sector,
-							cmd->sdb.length);
-					}
-				}
-#endif
-			}
-#endif
+
 			clear_bit_unlock(index, &hba->lrb_in_use);
 			/*
 			 *__ufshcd_release and __ufshcd_hibern8_release is
@@ -7716,9 +7687,6 @@ static irqreturn_t ufshcd_update_uic_error(struct ufs_hba *hba)
 		 */
 		dev_dbg(hba->dev, "%s: UIC Lane error reported, reg 0x%x\n",
 				__func__, reg);
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-		recordUniproErr(&hba->signalCtrl, reg, UNIPRO_ERR_PA);
-#endif
 		ufshcd_update_uic_error_cnt(hba, reg, UFS_UIC_ERROR_PA);
 		ufshcd_update_uic_reg_hist(&hba->ufs_stats.pa_err, reg);
 
@@ -7746,9 +7714,6 @@ static irqreturn_t ufshcd_update_uic_error(struct ufs_hba *hba)
 	reg = ufshcd_readl(hba, REG_UIC_ERROR_CODE_DATA_LINK_LAYER);
 	if ((reg & UIC_DATA_LINK_LAYER_ERROR) &&
 	    (reg & UIC_DATA_LINK_LAYER_ERROR_CODE_MASK)) {
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-		recordUniproErr(&hba->signalCtrl, reg, UNIPRO_ERR_DL);
-#endif
 		ufshcd_update_uic_error_cnt(hba, reg, UFS_UIC_ERROR_DL);
 		ufshcd_update_uic_reg_hist(&hba->ufs_stats.dl_err, reg);
 
@@ -7771,9 +7736,6 @@ static irqreturn_t ufshcd_update_uic_error(struct ufs_hba *hba)
 	reg = ufshcd_readl(hba, REG_UIC_ERROR_CODE_NETWORK_LAYER);
 	if ((reg & UIC_NETWORK_LAYER_ERROR) &&
 	    (reg & UIC_NETWORK_LAYER_ERROR_CODE_MASK)) {
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-		recordUniproErr(&hba->signalCtrl, reg, UNIPRO_ERR_NL);
-#endif
 		ufshcd_update_uic_reg_hist(&hba->ufs_stats.nl_err, reg);
 		hba->uic_error |= UFSHCD_UIC_NL_ERROR;
 		retval |= IRQ_HANDLED;
@@ -7782,9 +7744,6 @@ static irqreturn_t ufshcd_update_uic_error(struct ufs_hba *hba)
 	reg = ufshcd_readl(hba, REG_UIC_ERROR_CODE_TRANSPORT_LAYER);
 	if ((reg & UIC_TRANSPORT_LAYER_ERROR) &&
 	    (reg & UIC_TRANSPORT_LAYER_ERROR_CODE_MASK)) {
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-		recordUniproErr(&hba->signalCtrl, reg, UNIPRO_ERR_TL);
-#endif
 		ufshcd_update_uic_reg_hist(&hba->ufs_stats.tl_err, reg);
 		hba->uic_error |= UFSHCD_UIC_TL_ERROR;
 		retval |= IRQ_HANDLED;
@@ -7793,9 +7752,6 @@ static irqreturn_t ufshcd_update_uic_error(struct ufs_hba *hba)
 	reg = ufshcd_readl(hba, REG_UIC_ERROR_CODE_DME);
 	if ((reg & UIC_DME_ERROR) &&
 	    (reg & UIC_DME_ERROR_CODE_MASK)) {
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-		recordUniproErr(&hba->signalCtrl, reg, UNIPRO_ERR_DME);
-#endif
 		ufshcd_update_uic_error_cnt(hba, reg, UFS_UIC_ERROR_DME);
 		ufshcd_update_uic_reg_hist(&hba->ufs_stats.dme_err, reg);
 		hba->uic_error |= UFSHCD_UIC_DME_ERROR;
@@ -7821,15 +7777,9 @@ static irqreturn_t ufshcd_check_errors(struct ufs_hba *hba)
 	irqreturn_t retval = IRQ_NONE;
 
 	if (hba->errors & INT_FATAL_ERRORS || hba->ce_error){
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-		recordUniproErr(&hba->signalCtrl, hba->errors, UNIPRO_ERR_FATAL);
-#endif
 		queue_eh_work = true;
 	}
 	if (hba->errors & UIC_LINK_LOST) {
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-		recordUniproErr(&hba->signalCtrl, hba->errors, UNIPRO_ERR_LINK);
-#endif
 		dev_err(hba->dev, "%s: UIC_LINK_LOST received, errors 0x%x\n",
 					__func__, hba->errors);
 		queue_eh_work = true;
@@ -8062,9 +8012,6 @@ static int ufshcd_issue_tm_cmd(struct ufs_hba *hba, int lun_id, int task_id,
 	__set_bit(free_slot, &hba->outstanding_tasks);
 
 	/* Make sure descriptors are ready before ringing the task doorbell */
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-		recordRequestCnt(&hba->signalCtrl);
-#endif
 	wmb();
 
 	ufshcd_writel(hba, 1 << free_slot, REG_UTP_TASK_REQ_DOOR_BELL);
@@ -9648,9 +9595,6 @@ static int ufshcd_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 		case QUERY_DESC_IDN_INTERCONNECT:
 		case QUERY_DESC_IDN_GEOMETRY:
 		case QUERY_DESC_IDN_POWER:
-#ifdef OPLUS_FEATURE_STORAGE_TOOL
-	case QUERY_DESC_IDN_HEALTH:
-#endif
 			index = 0;
 			break;
 		case QUERY_DESC_IDN_UNIT:
@@ -9694,10 +9638,6 @@ static int ufshcd_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 		case QUERY_ATTR_IDN_EE_CONTROL:
 		case QUERY_ATTR_IDN_EE_STATUS:
 		case QUERY_ATTR_IDN_SECONDS_PASSED:
-#ifdef OPLUS_FEATURE_STORAGE_TOOL
-		case QUERY_ATTR_IDN_FFU_STATUS:
-#endif
-
 			index = 0;
 			break;
 		case QUERY_ATTR_IDN_DYN_CAP_NEEDED:
@@ -11278,9 +11218,6 @@ void ufshcd_remove(struct ufs_hba *hba)
 	remove_ufsplus_ctrl_proc();
 #endif
 #endif
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-	remove_signal_quality_proc(&hba->signalCtrl);
-#endif
 	ufs_sysfs_remove_nodes(hba->dev);
 	scsi_remove_host(hba->host);
 	/* disable interrupts */
@@ -11578,9 +11515,6 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 #if defined(CONFIG_UFSFEATURE)
 	ufsf_set_init_state(&hba->ufsf);
 #endif
-#endif
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-	create_signal_quality_proc(&hba->signalCtrl);
 #endif
 	async_schedule(ufshcd_async_scan, hba);
 
