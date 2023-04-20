@@ -76,14 +76,8 @@
 
 #include "ufs.h"
 #include "ufshci.h"
-#ifdef OPLUS_FEATURE_UFS_SHOW_LATENCY
-#include "ufs_latency_hist.h"
-#endif
 #if defined(CONFIG_UFSFEATURE)
 #include "ufsfeature.h"
-#endif
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-#include "ufs_signal_quality.h"
 #endif
 
 #define UFSHCD "ufshcd"
@@ -1022,12 +1016,7 @@ struct ufs_hba {
 #ifdef CONFIG_DEBUG_FS
 	struct debugfs_files debugfs_files;
 #endif
-#ifdef OPLUS_FEATURE_UFS_SHOW_LATENCY
-	int latency_hist_enabled;
-	struct io_latency_state io_lat_read;
-	struct io_latency_state io_lat_write;
-	struct io_latency_state io_lat_other;
-#endif
+
 
 	struct ufs_vreg_info vreg_info;
 	struct list_head clk_list_head;
@@ -1123,9 +1112,6 @@ struct ufs_hba {
 	bool force_g4;
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature ufsf;
-#endif
-#ifdef OPLUS_FEATURE_PADL_STATISTICS
-	struct unipro_signal_quality_ctrl signalCtrl;
 #endif
 	bool wb_enabled;
 

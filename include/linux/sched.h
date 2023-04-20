@@ -29,12 +29,6 @@
 #include <linux/task_io_accounting.h>
 #include <linux/rseq.h>
 
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_JANK_INFO
-#include <linux/healthinfo/jank_monitor.h>
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
-
 #ifdef VENDOR_EDIT
 extern void show_regs(struct pt_regs *);
 #endif /* VENDOR_EDIT */
@@ -886,11 +880,6 @@ struct task_struct {
 	unsigned int			flags;
 	unsigned int			ptrace;
 
-#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
-	u64 wake_tid;
-	u64 running_start_time;
-#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
-
 #ifdef CONFIG_SMP
 	struct llist_node		wake_entry;
 	int				on_cpu;
@@ -1594,19 +1583,6 @@ struct task_struct {
 	struct task_record record[OPLUS_NR_CPUS];	/* 2*u64 */
 #endif
 
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_JANK_INFO
-	int jank_trace;
-	struct jank_monitor_info jank_info;
-	unsigned in_mutex:1;
-	unsigned in_downread:1;
-	unsigned in_downwrite:1;
-	unsigned in_futex:1;
-	unsigned in_binder:1;
-	unsigned in_epoll:1;
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
-
 #ifdef CONFIG_OPLUS_FEATURE_TPP
 	int tpp_flag;
 #endif /* CONFIG_OPLUS_FEATURE_TPP */
@@ -2072,17 +2048,10 @@ extern pid_t alloc_svc_tgid;
 #endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 
 extern void __set_task_comm(struct task_struct *tsk, const char *from, bool exec);
-#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
-extern void get_target_thread_pid(struct task_struct *p);
-#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
+
 static inline void set_task_comm(struct task_struct *tsk, const char *from)
 {
 	__set_task_comm(tsk, from, false);
-
-#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
-	get_target_thread_pid(tsk);
-#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
-
 #ifdef CONFIG_OPLUS_ION_BOOSTPOOL
 	if (!strncmp(from, "allocator-servi", TASK_COMM_LEN))
 		alloc_svc_tgid = tsk->tgid;

@@ -1125,6 +1125,9 @@ struct rq {
 	struct cpuidle_state	*idle_state;
 	int			idle_state_idx;
 #endif
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	struct list_head ux_thread_list;
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 };
 
 #ifdef CONFIG_FAIR_GROUP_SCHED

@@ -33,9 +33,6 @@
 #endif
 #define MAX_ORDER_NR_PAGES (1 << (MAX_ORDER - 1))
 
-#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
-#define FREE_AREA_COUNTS 4
-#endif
 /*
  * PAGE_ALLOC_COSTLY_ORDER is the order at which allocations are deemed
  * costly to service.  That is between allocation orders which should
@@ -66,12 +63,6 @@ enum migratetype {
 	 */
 	MIGRATE_CMA,
 #endif
-#if defined(OPLUS_FEATURE_MEMORY_ISOLATE) && defined(CONFIG_OPLUS_MEMORY_ISOLATE)
-/*
- * Add a migrate type to manage special page alloc/free
- */
-        MIGRATE_OPLUS2,
-#endif /* OPLUS_FEATURE_MEMORY_ISOLATE */
 	MIGRATE_PCPTYPES, /* the number of types on the pcp lists */
 	MIGRATE_HIGHATOMIC = MIGRATE_PCPTYPES,
 #ifdef CONFIG_MEMORY_ISOLATION
@@ -169,15 +160,6 @@ enum zone_stat_item {
 	NR_ZSPAGES,		/* allocated in zsmalloc */
 #endif
 	NR_FREE_CMA_PAGES,
-#if defined(OPLUS_FEATURE_MEMORY_ISOLATE) && defined(CONFIG_OPLUS_MEMORY_ISOLATE)
-/*
- * Account free pages for MIGRATE_OPLUS
- */
-	NR_FREE_OPLUS2_PAGES,
-#endif /* OPLUS_FEATURE_MEMORY_ISOLATE */
-#ifdef OPLUS_FEATURE_HEALTHINFO
-        NR_IONCACHE_PAGES,
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 	NR_VM_ZONE_STAT_ITEMS };
 
 enum node_stat_item {
@@ -617,14 +599,6 @@ enum zone_type {
 
 #ifndef __GENERATING_BOUNDS_H
 
-#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
-struct page_label {
-    unsigned long label;
-    unsigned long segment;
-};
-#endif
-
-
 #define ASYNC_AND_SYNC 2
 
 struct zone {
@@ -635,12 +609,6 @@ struct zone {
 	unsigned long watermark_boost;
 
 	unsigned long nr_reserved_highatomic;
-#if defined(OPLUS_FEATURE_MEMORY_ISOLATE) && defined(CONFIG_OPLUS_MEMORY_ISOLATE)
-/*
- * Number of MIGRATE_OPLUS page block.
- */
-	unsigned long nr_migrate_oplus2_block;
-#endif /* OPLUS_FEATURE_MEMORY_ISOLATE */
 	/*
 	 * We don't know if the memory that we're going to allocate will be
 	 * freeable or/and it will be released eventually, so to avoid totally
@@ -717,9 +685,6 @@ struct zone {
 	unsigned long		managed_pages;
 	unsigned long		spanned_pages;
 	unsigned long		present_pages;
-#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
-    struct page_label zone_label[FREE_AREA_COUNTS];
-#endif
 	const char		*name;
 
 #ifdef CONFIG_MEMORY_ISOLATION
@@ -742,11 +707,7 @@ struct zone {
 	ZONE_PADDING(_pad1_)
 
 	/* free areas of different sizes */
-#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
-	struct free_area	free_area[FREE_AREA_COUNTS][MAX_ORDER];
-#else
 	struct free_area	free_area[MAX_ORDER];
-#endif
 
 	/* zone flags, see below */
 	unsigned long		flags;
