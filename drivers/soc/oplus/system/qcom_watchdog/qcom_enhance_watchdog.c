@@ -30,7 +30,7 @@ struct oplus_irq_counter {
 	unsigned int all_irqs_delta;
 	unsigned int *irqs_last;
 	unsigned int *irqs_delta;
-};
+};OPLUS_FEATURE_QCOM_WATCHDOG
 
 static struct oplus_irq_counter o_irq_counter;
 static int irqno_sort[10];

@@ -459,25 +459,6 @@
 		pinctrl-0 = <&rf_cable0_active>;
 	};
 	//#endif /* OPLUS_FEATURE_TP_BASIC */
-	//#ifdef OPLUS_BUG_DEBUG
-	oplus_sim_detect {
-		compatible = "oplus, sim_detect";
-		Hw,sim_det = "modem_det";
-	};
-	extcon_usb1 {
-		status = "disabled";
-	};
-	oplus-gpio {
-		compatible = "oplus,oplus-gpio";
-		pinctrl-names = "default", "sim2_det_no_pull", "sim2_det_pull_high", "sim2_det_pull_low";
-		pinctrl-0 = <&sim2_det_no_pull>;
-		pinctrl-1 = <&sim2_det_no_pull>;
-		pinctrl-2 = <&sim2_det_pull_high>;
-		pinctrl-3 = <&sim2_det_pull_low>;
-		oplus,oplus-sim2-det = <&pm8150_gpios 10 0>;
-		oplus,uim-reset-pin = "modem_solution";
-	};
-	//#endif /* OPLUS_BUG_DEBUG */
 };
 /*&qupv3_se13_i2c {
 	#address-cells = <1>;

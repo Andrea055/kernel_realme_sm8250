@@ -18,11 +18,6 @@
 #include <linux/quotaops.h>
 #include <linux/backing-dev.h>
 #include "internal.h"
-#if defined(OPLUS_FEATURE_IOMONITOR) && defined(CONFIG_IOMONITOR)
-#include <linux/iomonitor/iomonitor.h>
-#include <linux/iomonitor/iotrace.h>
-DEFINE_TRACE(syscall_sync_timeout);
-#endif /*OPLUS_FEATURE_IOMONITOR*/
 
 bool fsync_enabled = true;
 module_param(fsync_enabled, bool, 0644);

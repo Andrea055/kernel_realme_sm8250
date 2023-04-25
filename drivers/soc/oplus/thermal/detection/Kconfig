@@ -1,5 +1,5 @@
 config OPLUS_FEATURE_ATD
 	tristate "abnormal_detection"
-	default n
+	default y
 	help
 	  abnormal thread detection
