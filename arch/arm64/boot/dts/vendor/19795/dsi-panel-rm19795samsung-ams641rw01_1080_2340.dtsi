@@ -51,7 +51,23 @@
 
 		qcom,dynamic-mode-switch-enabled;
 		qcom,dynamic-mode-switch-type = "dynamic-switch-immediate";
-		qcom,mdss-dsi-display-timings {
+		
+			oplus,dsi-aod-high-brightness = <4 180>,
+				<17 150>,
+				<33 135>,
+				<49 110>,
+				<65 90>,
+				<81 80>,
+				<97 75>,
+				<113 70>,
+				<129 60>;
+
+	oplus,dsi-aod-low-brightness = <4 108>,
+				<17 95>,
+				<33 0>;
+
+	oplus,dsi-aod-low-brightness-threshold = <33>;
+	qcom,mdss-dsi-display-timings {
 			timing@0{
 				//qcom,mdss-mdp-transfer-time-us = <14000>;
 				qcom,mdss-dsi-panel-clockrate = <660000000>;
@@ -668,7 +684,21 @@
 	//#endif /*VENDOR_EDIT*/
 	qcom,ulps-enabled;
 	qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
+	oplus,dsi-aod-high-brightness = <4 180>,
+				<17 150>,
+				<33 135>,
+				<49 110>,
+				<65 90>,
+				<81 80>,
+				<97 75>,
+				<113 70>,
+				<129 60>;
 
+	oplus,dsi-aod-low-brightness = <4 108>,
+				<17 95>,
+				<33 0>;
+
+	oplus,dsi-aod-low-brightness-threshold = <33>;
 	qcom,mdss-dsi-display-timings {
 		timing@0 { /* fhd 60hz */
 				qcom,mdss-dsi-panel-phy-timings = [00 17 06 05 21 20 06 06 04 02 04 00 14 15];

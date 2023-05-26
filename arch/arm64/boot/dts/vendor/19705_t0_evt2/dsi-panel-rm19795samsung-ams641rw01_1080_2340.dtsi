@@ -51,6 +51,22 @@
 
 		qcom,dynamic-mode-switch-enabled;
 		qcom,dynamic-mode-switch-type = "dynamic-switch-immediate";
+		oplus,dsi-aod-high-brightness = <4 180>,
+				<17 150>,
+				<33 135>,
+				<49 110>,
+				<65 90>,
+				<81 80>,
+				<97 75>,
+				<113 70>,
+				<129 60>;
+
+		oplus,dsi-aod-low-brightness = <4 108>,
+					<17 95>,
+					<33 0>;
+
+		oplus,dsi-aod-low-brightness-threshold = <33>;
+
 		qcom,mdss-dsi-display-timings {
 			timing@0{
 				//qcom,mdss-mdp-transfer-time-us = <14000>;
