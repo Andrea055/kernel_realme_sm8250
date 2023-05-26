@@ -20,10 +20,10 @@
  * lv == 3 -> error
  */
 
-static int tpp_log_lv = 1;
+static int tpp_log_lv = 2;
 
 // Set tpp_on 1 to open tpp features
-static int tpp_on = 0;
+static int tpp_on = 1;
 
 static int tpp_task_record_on = 0;
 
