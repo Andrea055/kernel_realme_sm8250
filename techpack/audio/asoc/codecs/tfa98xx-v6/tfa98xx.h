@@ -36,32 +36,21 @@
 /*To support tfa9873*/
 #define TFA98XX_FLAG_ADAPT_NOISE_MODE   (1 << 9)
 #ifdef OPLUS_ARCH_EXTENDS
+/*Add for multi speaker*/
 #define TFA98XX_FLAG_CHIP_SELECTED      (1 << 16)
 
 //chip select
-#define CHIP_SELECTOR_LEFT	(1)
-#define CHIP_SELECTOR_RIGHT	(2)
-#define CHIP_SELECTOR_STEREO	(3)
+#define CHIP_SELECTOR_LEFT    (1)
+#define CHIP_SELECTOR_RIGHT   (2)
+#define CHIP_SELECTOR_STEREO  (3)
+#define CHIP_SELECTOR_0       (4)
+#define CHIP_SELECTOR_1       (5)
+#define CHIP_SELECTOR_2       (6)
+#define CHIP_SELECTOR_3       (7)
 
 //device i2c address
 #define CHIP_LEFT_ADDR		(0x34)
 #define CHIP_RIGHT_ADDR		(0x35)
-
-/*modified for pad tdm pa count*/
-#define CHIP_4PA_COUNT    (4)
-/*modified for pad tdm chip select*/
-#define CHIP_SELECTOR_4PA_LEFT_UP      (1)
-#define CHIP_SELECTOR_4PA_LEFT_DOWN    (2)
-#define CHIP_SELECTOR_4PA_RIGHT_UP     (3)
-#define CHIP_SELECTOR_4PA_RIGHT_DOWN   (4)
-#define CHIP_SELECTOR_4PA_LEFT_BOTH    (5)
-#define CHIP_SELECTOR_4PA_RIGHT_BOTH   (6)
-
-/*modified for pad tdm device i2c address*/
-#define CHIP_LEFT_UP_ADDR       (0x35)
-#define CHIP_LEFT_DOWN_ADDR     (0x34)
-#define CHIP_RIGHT_UP_ADDR      (0x36)
-#define CHIP_RIGHT_DOWN_ADDR    (0x37)
 #endif /* OPLUS_ARCH_EXTENDS */
 
 #define TFA98XX_NUM_RATES		9
@@ -112,6 +101,7 @@ struct tfa98xx {
 	struct delayed_work nmodeupdate_work;
 
 	#ifdef OPLUS_FEATURE_FADE_IN
+	/*Add for volume fadein*/
 	struct delayed_work fadein_work;
 	#endif /* OPLUS_FEATURE_FADE_IN */
 	struct mutex dsp_lock;
@@ -142,6 +132,7 @@ struct tfa98xx {
 	int power_gpio;
 	int irq_gpio;
 
+	bool is_use_freq;
 	struct list_head list;
 	struct tfa_device *tfa;
 	int vstep;
@@ -158,12 +149,21 @@ struct tfa98xx {
 	bool set_mtp_cal;
 	uint16_t cal_data;
 	#ifdef OPLUS_ARCH_EXTENDS
+	/*Add for resource*/
 	struct regulator *tfa98xx_vdd;
+	int min_uV;
+	int max_uV;
+	int optimum_uA;
+	bool mute;
 	#endif /* OPLUS_ARCH_EXTENDS */
 
 	#ifdef OPLUS_FEATURE_FADE_IN
+	/*Add for volume fadein*/
 	bool fadein_enable;
 	#endif /* OPLUS_FEATURE_FADE_IN */
+	#ifdef OPLUS_ARCH_EXTENDS
+	uint16_t f0_data;
+	#endif /*OPLUS_ARCH_EXTENDS*/
 };
 
 

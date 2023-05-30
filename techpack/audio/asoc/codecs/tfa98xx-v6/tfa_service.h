@@ -373,6 +373,7 @@ enum Tfa98xx_Error tfa98xx_set_volume_level_v6(struct tfa_device *tfa,
 				  unsigned short vol);
 
 #ifdef OPLUS_ARCH_EXTENDS
+/* add for ftm */
 enum Tfa98xx_Error tfa98xx_set_ana_volume_v6(struct tfa_device *tfa, unsigned int vol);
 enum Tfa98xx_Error tfa98xx_get_ana_volume_v6(struct tfa_device *tfa, unsigned int *vol);
 #endif /* OPLUS_ARCH_EXTENDS */
@@ -951,6 +952,7 @@ enum Tfa98xx_Error tfaRunSpeakerStartup_v6(struct tfa_device *tfa, int force, in
  */
 enum Tfa98xx_Error tfaRunSpeakerCalibration_v6(struct tfa_device *tfa);
 #ifdef OPLUS_ARCH_EXTENDS
+/*Add for speaker resistance*/
 enum Tfa98xx_Error tfaRunSpeakerCalibration_result_v6(struct tfa_device *tfa, int *result);
 #endif
 

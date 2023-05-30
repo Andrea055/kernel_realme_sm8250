@@ -29,6 +29,11 @@
 #else
 	#define tfa98xx_trace_printk(...)
 #endif
+#ifndef OPLUS_ARCH_EXTENDS
+#define OPLUS_ARCH_EXTENDS
+#endif /* OPLUS_ARCH_EXTENDS */
+//use proc fs to replace debug fs
+#undef CONFIG_DEBUG_FS
 
 #endif /* __CONFIG_LINUX_KERNEL_INC__ */
 

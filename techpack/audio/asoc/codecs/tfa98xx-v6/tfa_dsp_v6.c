@@ -14,6 +14,7 @@
 #include "tfa_internal.h"
 
 #ifdef OPLUS_ARCH_EXTENDS
+/*Add for FTM*/
 extern int ftm_mode;
 extern char ftm_SpeakerCalibration[17];
 extern char ftm_spk_resistance[24];
@@ -24,6 +25,7 @@ extern char ftm_spk_resistance[24];
 #endif /* OPLUS_ARCH_EXTENDS */
 
 #ifdef OPLUS_ARCH_EXTENDS
+/*Add for aging calibration*/
 extern bool aging_flag;
 #endif /* OPLUS_ARCH_EXTENDS */
 
@@ -79,6 +81,7 @@ void tfa9894_ops(struct tfa_device_ops *ops);
 #define TFA_MTPEX_POS           TFA98XX_KEY2_PROTECTED_MTP0_MTPEX_POS /**/
 
 #ifdef OPLUS_ARCH_EXTENDS
+/*Add for speaker resistance*/
 bool g_speaker_resistance_fail = false;
 #endif /* OPLUS_ARCH_EXTENDS */
 
@@ -986,6 +989,7 @@ enum Tfa98xx_Error tfa98xx_set_volume_level_v6(struct tfa_device *tfa, unsigned 
 }
 
 #ifdef OPLUS_ARCH_EXTENDS
+/*add for ftm */
 enum Tfa98xx_Error tfa98xx_set_ana_volume_v6(struct tfa_device *tfa, unsigned int vol)
 {
 	if(tfa->in_use == 0)
@@ -1224,6 +1228,7 @@ tfa_dsp_patch_v6(struct tfa_device *tfa, int patchLength,
 		 const unsigned char *patchBytes)
 {
 	#ifndef OPLUS_ARCH_EXTENDS
+	/*Modify for smart mute issue*/
 	enum Tfa98xx_Error error;
 	#else /* OPLUS_ARCH_EXTENDS */
 	enum Tfa98xx_Error error = Tfa98xx_Error_Ok;
@@ -1240,6 +1245,7 @@ tfa_dsp_patch_v6(struct tfa_device *tfa, int patchLength,
 		return error;
 	}
 	#ifdef OPLUS_ARCH_EXTENDS
+	/*Add for smart mute issue*/
 	tfa98xx_dsp_system_stable_v6(tfa, &status);
 	if (!status) {
 		pr_err("tfa no clock\n");
@@ -1608,6 +1614,17 @@ enum Tfa98xx_Error dsp_msg(struct tfa_device *tfa, int length24, const char *buf
 
 			/* (a) send the existing (full) message */
 			blob = kmalloc(64*1024, GFP_KERNEL); // max length is 64k
+			#ifdef OPLUS_ARCH_EXTENDS
+			/*fix coverity issue 215241*/
+			if (blob == NULL) {
+				pr_err("[0x%x] can not allocate memory\n", tfa->slave_address);
+				if (intbuf) {
+					kmem_cache_free(tfa->cachep, intbuf);
+					intbuf = NULL;
+				}
+				return Tfa98xx_Error_Fail;
+			}
+			#endif /* OPLUS_ARCH_EXTENDS */
 			len = tfa_tib_dsp_msgmulti(tfa, -1, (const char*)blob);
 			if (tfa->verbose) {
 				pr_debug("Multi-message buffer full. Sending multi-message, length=%d \n", len);
@@ -1638,6 +1655,17 @@ enum Tfa98xx_Error dsp_msg(struct tfa_device *tfa, int length24, const char *buf
 
 			/* Get the full multi-msg data */
 			blob = kmalloc(64*1024, GFP_KERNEL); //max length is 64k
+			#ifdef OPLUS_ARCH_EXTENDS
+			/*fix coverity issue 215241*/
+			if (blob == NULL) {
+				pr_err("[0x%x] can not allocate memory for last message\n", tfa->slave_address);
+				if (intbuf) {
+					kmem_cache_free(tfa->cachep, intbuf);
+					intbuf = NULL;
+				}
+				return Tfa98xx_Error_Fail;
+			}
+			#endif /* OPLUS_ARCH_EXTENDS */
 			length = tfa_tib_dsp_msgmulti(tfa, -1, (const char*)blob);
 
 			if (tfa->verbose)
@@ -1734,6 +1762,7 @@ enum Tfa98xx_Error tfa_reg_read(struct tfa_device *tfa, unsigned char subaddress
 	enum Tfa98xx_Error error;
 
 	#ifdef OPLUS_ARCH_EXTENDS
+	/*Add for null point issue at boot*/
 	if (tfa->dev_ops.tfa_reg_read == NULL) {
 		pr_err("%s: not init yet!", __func__);
 		return Tfa98xx_Error_Fail;
@@ -1752,6 +1781,7 @@ enum Tfa98xx_Error tfa_reg_write(struct tfa_device *tfa, unsigned char subaddres
 	enum Tfa98xx_Error error;
 
 	#ifdef OPLUS_ARCH_EXTENDS
+	/*Add for null point issue at boot*/
 	if (tfa->dev_ops.tfa_reg_write == NULL) {
 		pr_err("%s: not init yet!", __func__);
 		return Tfa98xx_Error_Fail;
@@ -2740,14 +2770,27 @@ enum Tfa98xx_Error tfaGetFwApiVersion(struct tfa_device *tfa, unsigned char *pFi
 		return Tfa98xx_Error_Bad_Parameter;
 	if (!tfa->is_probus_device)
 	{
-		err = mem_read(tfa, FW_VAR_API_VERSION, 1, (int *)pFirmwareVersion);
+		int buffer;
+		err = mem_read(tfa, FW_VAR_API_VERSION, 1, (int *)(&buffer));
 		if (err) {
 			pr_debug("%s Error: Unable to get API Version from DSP \n", __FUNCTION__);
 			return err;
 		}
+
+		pFirmwareVersion[0] = (buffer >> 16) & 0xff;
+		pFirmwareVersion[1] = (buffer >> 8) & 0xff;
+		if ((pFirmwareVersion[0] != 2) && (pFirmwareVersion[1] >= 33)) {
+			pFirmwareVersion[2] = (buffer >> 3) & 0x1F;
+			pFirmwareVersion[3] = (buffer) & 0x07;
+		} else {
+			pFirmwareVersion[2] = (buffer >> 6) & 0x03;
+			pFirmwareVersion[3] = (buffer) & 0x3f;
+		}
 	}
 	else
 	{
+		unsigned char buffer[4 * 3] = { 0 };
+
 		cmd_len = 0x03;
 
 		/* GetAPI: Command is 0x00 0x80 0xFE */
@@ -2763,10 +2806,32 @@ enum Tfa98xx_Error tfaGetFwApiVersion(struct tfa_device *tfa, unsigned char *pFi
 		if (err == 0)
 		{
 			res_len = 3;
-			err = tfa98xx_read_dsp(tfa, res_len, (unsigned char *)pFirmwareVersion);
+			err = tfa98xx_read_dsp(tfa, res_len, (unsigned char *)buffer);
+		}
 
+		/* Split 3rd byte into two seperate ITF version fields (3rd field and 4th field) */
+		pFirmwareVersion[0] = (buffer[0]);
+		pFirmwareVersion[1] = (buffer[1]);
+		if ((pFirmwareVersion[0] != 2) && (pFirmwareVersion[1] >= 33)) {
+			pFirmwareVersion[3] = (buffer[2]) & 0x07;
+			pFirmwareVersion[2] = (buffer[2] >> 3) & 0x1F;
+		} else {
+			pFirmwareVersion[3] = (buffer[2]) & 0x3f;
+			pFirmwareVersion[2] = (buffer[2] >> 6) & 0x03;
 		}
 	}
+
+	if (1 == tfa->cnt->ndev) {
+		/* Mono configuration */
+		/* Workaround for FW 8.9.0 (FW API x.31.y.z) & above.
+		   Firmware cannot return the 4th field (mono/stereo) of ITF version correctly, as it requires
+		   certain set of messages to be sent before it can detect itself as a mono/stereo configuration.
+		   Hence, HostSDK need to handle this at system level */
+		if ((pFirmwareVersion[0] != 2) && (pFirmwareVersion[1] >= 31)) {
+			pFirmwareVersion[3] = 1;
+		}
+	}
+
 	return err;
 
 }
@@ -2782,6 +2847,7 @@ enum Tfa98xx_Error tfaRunSpeakerBoost_v6(struct tfa_device *tfa, int force, int 
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
 	int value;
 	#ifdef OPLUS_ARCH_EXTENDS
+	/*Add for speaker resistance*/
 	int calibrate_done = 0;
 	#endif /* OPLUS_ARCH_EXTENDS */
 
@@ -2811,6 +2877,7 @@ enum Tfa98xx_Error tfaRunSpeakerBoost_v6(struct tfa_device *tfa, int force, int 
 			tfa->sync_iv_delay = 1;
 
 		#ifdef OPLUS_ARCH_EXTENDS
+		/*Add for speaker resistance*/
 		tfa_dev_set_state(tfa, TFA_STATE_OPERATING);
 		if (!tfa->is_probus_device) {
 			tfaRunSpeakerCalibration_result_v6(tfa, &calibrate_done);
@@ -2847,6 +2914,7 @@ enum Tfa98xx_Error tfaRunSpeakerStartup_v6(struct tfa_device *tfa, int force, in
 	tfa98xx_auto_copy_mtp_to_iic(tfa);
 
 	#ifndef OPLUS_ARCH_EXTENDS
+	/*Delete for The ftm mode will not load the speaker protection algorithm, resulting in a timeout of two seconds*/
 	err = tfaGetFwApiVersion(tfa, (unsigned char *)&tfa->fw_itf_ver[0]);
 	if (err) {
 		pr_err("[%s] cannot get FWAPI error = %d \n", __FUNCTION__, err);
@@ -2902,6 +2970,7 @@ enum Tfa98xx_Error tfaRunSpeakerCalibration_v6(struct tfa_device *tfa)
 }
 
 #ifdef OPLUS_ARCH_EXTENDS
+/*Add for speaker resistance*/
 enum Tfa98xx_Error tfaRunSpeakerCalibration_result_v6(struct tfa_device *tfa, int *result)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
@@ -2936,9 +3005,11 @@ enum Tfa98xx_Error tfaRunSpeakerCalibration_result_v6(struct tfa_device *tfa, in
 		pr_info("%s: valid mohms[%d, %d]\n", __func__, tfa->min_mohms, tfa->max_mohms);
 		if ((tfa->mohm[0] < tfa->min_mohms) || (tfa->mohm[0] > tfa->max_mohms)) {
 			pr_info("speaker_resistance_fail\n");
+			/*Add for FTM*/
 			if (ftm_mode == BOOT_MODE_FACTORY) {
 				strcpy(ftm_spk_resistance, "speaker_resistance_fail");
 			}
+			/*Add for FTM end*/
 			g_speaker_resistance_fail = true;
 
 			/* When MTPOTC is set (cal=once) re-lock key2 */
@@ -3246,6 +3317,7 @@ enum Tfa98xx_Error tfaRunWaitCalibration_v6(struct tfa_device *tfa, int *calibra
 
 	if (*calibrateDone != 1) {
 		#ifdef OPLUS_ARCH_EXTENDS
+		/*Add for FTM*/
 		if (ftm_mode == BOOT_MODE_FACTORY) {
 			strcpy(ftm_SpeakerCalibration, "calibration_fail");
 		}
@@ -3320,6 +3392,7 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 
 		/* Go to the Operating state */
 		#ifndef OPLUS_ARCH_EXTENDS
+		/*Modify for mute issue every time umute PA, because PA umute need some time*/
 		tfa_dev_set_state(tfa, TFA_STATE_OPERATING | TFA_STATE_MUTE);
 		#else /* OPLUS_ARCH_EXTENDS */
 		tfa_dev_set_state(tfa, TFA_STATE_OPERATING);
@@ -3376,6 +3449,7 @@ enum tfa_error tfa_dev_stop(struct tfa_device *tfa)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
 	#ifdef OPLUS_ARCH_EXTENDS
+	/*Add for mute issue*/
 	int total_wait_count = 20;
 	int times = 0, ready = 0;
 	#endif /*OPLUS_ARCH_EXTENDS*/
@@ -3395,6 +3469,7 @@ enum tfa_error tfa_dev_stop(struct tfa_device *tfa)
 	err = tfa98xx_aec_output(tfa, 0);
 
 	#ifdef OPLUS_ARCH_EXTENDS
+	/*Add for mute issue*/
 	/* we should ensure state machine in powedown here. */
 	while ((TFA_GET_BF(tfa, MANSTATE) != 0) && (times++ < total_wait_count)) {
 		pr_info("tfa stop wait state machine goto powerdown mode.\n");
@@ -3567,6 +3642,38 @@ tfa98xx_write_data_v6(struct tfa_device *tfa,
 	return error;
 }
 
+enum Tfa98xx_Error tfa98xxSetFresFrequency(struct tfa_device *tfa, uint16_t freq)
+{
+	uint16_t mtp_freq;
+	/* Verify the frequnecy range set bu user! */
+	if (freq < 300 || freq > 1322) {
+		pr_debug("\n Error: Resonance frequence should have [300Hz ; 1322Hz] range! \n");
+		return Tfa98xx_Error_Ok;
+	}
+	mtp_freq = (freq - 300) / 2;
+	pr_err("\n tfa mtp_freq to be written:%d! \n", mtp_freq);
+	return tfa98xx_set_mtp_v6(tfa,mtp_freq<<7,0xFF80); /* val mask */
+}
+
+/*
+ * retrieve Fres from SB4.0 algorithm
+ *
+ *  assume that the device has been calibrated
+ */
+enum Tfa98xx_Error tfa_dsp_get_resonance_frequency(struct tfa_device *tfa, uint16_t *fres)
+{
+	enum Tfa98xx_Error error = Tfa98xx_Error_Ok;
+	unsigned char bytes[3 * 2] = { 0 };
+	int data[2];
+	error = tfa_dsp_cmd_id_write_read_v6(tfa, MODULE_SPEAKERBOOST, SB_PARAM_GET_FRES, 6, bytes);
+	if (error == Tfa98xx_Error_Ok) {
+		tfa98xx_convert_bytes2data_v6(6, bytes, data);
+	}
+	*fres = (data[0]) / TFA2_FW_FRES_SCALE;
+	tfa->fres[0] = *fres;
+	return error;
+}
+
 /*
  * fill the calibration value as milli ohms in the struct
  *
@@ -3575,14 +3682,16 @@ tfa98xx_write_data_v6(struct tfa_device *tfa,
 enum Tfa98xx_Error tfa_dsp_get_calibration_impedance_v6(struct tfa_device *tfa)
 {
 	enum Tfa98xx_Error error = Tfa98xx_Error_Ok;
-	unsigned char bytes[3*2] = {0};
-	int nr_bytes, i, data[2], calibrateDone, spkr_count=0, cal_idx=0;
+	char *bytes = NULL;
+	int *data = NULL;
+	int nr_bytes, i, calibrateDone, spkr_count=0, cal_idx=0;
 	unsigned int scaled_data;
 	int tries=0;
 
 	error = tfa_supported_speakers(tfa, &spkr_count);
 
 	#ifndef OPLUS_ARCH_EXTENDS
+	/*Add for aging calibration*/
 	if (tfa_dev_mtp_get(tfa, TFA_MTP_OTC)) {
 	#else /* OPLUS_ARCH_EXTENDS */
 	if (tfa_dev_mtp_get(tfa, TFA_MTP_OTC) && !aging_flag) {
@@ -3631,14 +3740,20 @@ enum Tfa98xx_Error tfa_dsp_get_calibration_impedance_v6(struct tfa_device *tfa)
 		/* SoftDSP interface differs from hw-dsp interfaces */
 		if(tfa->is_probus_device && tfa->cnt->ndev > 1) {
 			spkr_count = tfa->cnt->ndev;
-			#ifdef OPLUS_ARCH_EXTENDS
-			/*Add for 4 PA solution */
-			if (spkr_count == 4 )
-				spkr_count = 2;
-			#endif /*OPLUS_ARCH_EXTENDS*/
 		}
 
 		nr_bytes = spkr_count * 3;
+		bytes = kmalloc(sizeof(char) * spkr_count, GFP_KERNEL);
+		if (bytes == NULL) {
+			return Tfa98xx_Error_Fail;
+		}
+		data = kmalloc(sizeof(int) * spkr_count, GFP_KERNEL);
+		if (data == NULL) {
+			if(bytes)
+				kfree(bytes);
+			return Tfa98xx_Error_Fail;
+		}
+
 		error = tfa_dsp_cmd_id_write_read_v6(tfa, MODULE_SPEAKERBOOST, SB_PARAM_GET_RE25C, nr_bytes, bytes);
 		if (error == Tfa98xx_Error_Ok) {
 			tfa98xx_convert_bytes2data_v6(nr_bytes, bytes, data);
@@ -3648,13 +3763,7 @@ enum Tfa98xx_Error tfa_dsp_get_calibration_impedance_v6(struct tfa_device *tfa)
 				/* for probus devices, calibration values coming from soft-dsp speakerboost,
 				   are ordered in a different way. Re-align to standard representation. */
 				cal_idx=i;
-				#ifdef OPLUS_ARCH_EXTENDS
-				/*Add for 4 PA solution*/
-				// cnt-id 0,2 is left, cnt-id 1,3 is right
-				if((tfa->is_probus_device && (tfa->dev_idx % 2) == 1) ) {
-				#else
 				if((tfa->is_probus_device && tfa->dev_idx >= 1) ) {
-				#endif/*OPLUS_ARCH_EXTENDS*/
 					cal_idx=0;
 				}
 
@@ -3667,6 +3776,8 @@ enum Tfa98xx_Error tfa_dsp_get_calibration_impedance_v6(struct tfa_device *tfa)
 					tfa->mohm[cal_idx] = (scaled_data*1000)/TFA1_FW_ReZ_SCALE;
 			}
 		}
+		kfree(bytes);
+		kfree(data);
 	}
 
 	return error;
@@ -3989,6 +4100,7 @@ enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state)
 		if (!tfa->is_probus_device)
 		{
 			#ifdef OPLUS_ARCH_EXTENDS
+			/*Add for speaker resistance*/
 			err = (enum tfa_error)tfa98xx_set_mtp_v6(tfa, 1, TFA98XX_KEY2_PROTECTED_MTP0_MTPOTC_MSK);
 			if (err != tfa_error_ok) {
 				return err;
@@ -4018,6 +4130,7 @@ enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state)
 									* However in case of calibration wait for DSP! (This should be case only during calibration).
 									*/
 		#ifndef OPLUS_ARCH_EXTENDS
+		/*Modify for 9874 play sound late*/
 		if (TFA_GET_BF(tfa, MTPOTC) == 1 && tfa->tfa_family == 2) {
 		#else /* OPLUS_ARCH_EXTENDS */
 		if ((TFA_GET_BF(tfa, MTPOTC) == 1) && (tfa->tfa_family == 2) && (!tfa->is_probus_device)) {
@@ -4116,6 +4229,7 @@ int tfa_dev_mtp_get(struct tfa_device *tfa, enum tfa_mtp item)
 	int value = 0;
 
 	#ifdef OPLUS_ARCH_EXTENDS
+	/*Add for null point issue at boot*/
 	if(tfa->in_use == 0) {
 		pr_info("%s: tfa is not opened!", __func__);
 		return value;
@@ -4149,6 +4263,9 @@ int tfa_dev_mtp_get(struct tfa_device *tfa, enum tfa_mtp item)
 				pr_debug("Error: Current device has no secondary Re25 channel \n");
 			}
 			break;
+		case TFA_MTP_F0:
+			value = tfa_get_bf_v6(tfa, TFA9873_BF_CUSTINFO);//all max 2 devices have same CUSTINFO
+			break;
 		case TFA_MTP_LOCK:
 			break;
 	}
@@ -4161,6 +4278,7 @@ enum tfa_error tfa_dev_mtp_set(struct tfa_device *tfa, enum tfa_mtp item, int va
 	enum tfa_error err = tfa_error_ok;
 
 	#ifdef OPLUS_ARCH_EXTENDS
+	/*Add for null point issue at boot*/
 	if(tfa->in_use == 0) {
 		pr_info("%s: tfa is not opened!", __func__);
 		return tfa_error_device;
@@ -4196,6 +4314,8 @@ enum tfa_error tfa_dev_mtp_set(struct tfa_device *tfa, enum tfa_mtp item, int va
 				pr_debug("Error: Current device has no secondary Re25 channel \n");
 				err = tfa_error_bad_param;
 			}
+			break;
+		case TFA_MTP_F0:
 			break;
 		case TFA_MTP_LOCK:
 			break;

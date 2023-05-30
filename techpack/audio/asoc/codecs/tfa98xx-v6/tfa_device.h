@@ -146,8 +146,9 @@ struct tfa_device {
 
 	/*To support tfa9873*/
 	char fw_itf_ver[4];          /* Firmware ITF version */
-
+	int fres[3];
 	#ifdef OPLUS_ARCH_EXTENDS
+	/*Add for calibration range*/
 	u32 min_mohms;
 	u32 max_mohms;
 	#endif /* OPLUS_ARCH_EXTENDS */
@@ -255,6 +256,7 @@ enum tfa_mtp {
 	TFA_MTP_RE25,		/**< */
 	TFA_MTP_RE25_PRIM,	/**< */
 	TFA_MTP_RE25_SEC,	/**< */
+	TFA_MTP_F0,	/**< */
 	TFA_MTP_LOCK,		/**< */
 };
 
