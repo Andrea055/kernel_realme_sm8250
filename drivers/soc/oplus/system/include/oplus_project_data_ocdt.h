@@ -74,7 +74,7 @@ enum {
     REBOOT_KERNEL       = 0x27,
     REBOOT_MODEM        = 0x28,
     REBOOT_ANDROID      = 0x29,
-//Modify for PHOENIX_PROJECT and OPPO_DOCTOR use
+//Modify for PHOENIX_PROJECT and OPLUS_DOCTOR use
     REBOOT_SBL_DDRTEST  = 0x2B,  //Add for agingtest
     REBOOT_SBL_DDR_CUS  = 0x2C,
     REBOOT_AGINGTEST    = 0x2D,
@@ -116,9 +116,9 @@ enum OPLUS_ENG_VERSION {
     ALL_NET_CT_TEST         = 0x09,
     ALL_NET_CT_FIELD        = 0x0A,
     HIGH_TEMP_AGING         = 0x0B,
-	FACTORY					= 0x0C,
-	CE                      = 0x0D,
-	PTCRB                   = 0x0E
+    FACTORY                 = 0x0C,
+    CE                      = 0x0D,
+    PTCRB                   = 0x0E,
 };
 
 typedef  struct

@@ -144,6 +144,9 @@ unsigned int is_project_oldcdt(int project )
 
 unsigned int get_PCB_Version_oldcdt(void)
 {
+	if (format == NULL) {
+		oplus_project_init_oldcdt();
+	}
 	if(format)
 		return format->nPCBVersion;
 	return 0;
@@ -151,6 +154,9 @@ unsigned int get_PCB_Version_oldcdt(void)
 
 unsigned int get_Modem_Version_oldcdt(void)
 {
+	if (format == NULL) {
+		oplus_project_init_oldcdt();
+	}
 	if(format)
 		return format->nModem;
 	return 0;
@@ -168,6 +174,9 @@ unsigned int get_Operator_Version_oldcdt(void)
 
 unsigned int get_eng_version_oldcdt(void)
 {
+	if (format == NULL) {
+		oplus_project_init_oldcdt();
+	}
 	if(format)
 		return format->nENGVersion;
 	return 0;
@@ -180,6 +189,9 @@ bool oplus_daily_build_oldcdt(void)
 
 int is_confidential_oldcdt(void)
 {
+	if (format == NULL) {
+		oplus_project_init_oldcdt();
+	}
 	if(format)
 		return format->isConfidential;
 	return 1;

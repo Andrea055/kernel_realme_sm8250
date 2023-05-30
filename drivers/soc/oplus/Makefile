@@ -12,3 +12,8 @@ obj-$(CONFIG_HORAE_THERMAL_SHELL) += thermal/
 obj-$(CONFIG_OPLUS_GPIO_NC) +=  oplus_gpio/
 #endif
 
+obj-y += game_opt/
+
+obj-y					+= misc/
+obj-y					+= sensor/
+obj-$(CONFIG_OPLUS_SYSTEM_KERNEL)	+= system/

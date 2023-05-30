@@ -3,7 +3,6 @@
 config OPLUS_FEATURE_MISC
 	bool "oplus misc feature"
 	default n
-	depends on OPLUS_SYSTEM_KERNEL
 	help
       oplus misc feature(trigger dump when user press power key for 4s) .
 

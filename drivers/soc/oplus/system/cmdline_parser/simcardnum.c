@@ -12,9 +12,9 @@ char sim_card_num[MAX_CMDLINE_PARAM_LEN];
 
 EXPORT_SYMBOL(sim_card_num);
 
-module_param_string(doublesim, sim_card_num, MAX_CMDLINE_PARAM_LEN,
+module_param_string(simcardnum, sim_card_num, MAX_CMDLINE_PARAM_LEN,
 0600);
-MODULE_PARM_DESC(doublesim,
-"doublesim=<doublesim>");
+MODULE_PARM_DESC(simcardnum,
+"simcardnum.simcardnum=<doublesim>");
 
 MODULE_LICENSE("GPL v2");

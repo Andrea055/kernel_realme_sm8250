@@ -24,3 +24,5 @@ source "drivers/soc/oplus/midas/Kconfig"
 #ifdef OPLUS_FEATURE_THERMAL_HORAE
 source "drivers/soc/oplus/thermal/Kconfig"
 #endif /* OPLUS_FEATURE_THERMAL_HORAE */
+
+source "drivers/soc/oplus/game_opt/Kconfig"

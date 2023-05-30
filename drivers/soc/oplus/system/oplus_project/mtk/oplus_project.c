@@ -152,29 +152,50 @@ static void init_project_version(void)
 
 
         g_project = &local_ProjectInfoCDT;
-
-        pr_err("KE new cdt newcdt:%d nVersion:%d Project:%d,Prj:%d, Dtsi:%d, Audio:%d, nRF:%d, PCB:%d Feature0-9:%d %d %d %d %d %d %d %d %d %d eng_version:%d confidential:%d\n",
-            newcdt,
-            g_project->Version,
-            g_project->nDataBCDT.ProjectNo,
-            oplus_prj,
-            g_project->nDataBCDT.DtsiNo,
-            g_project->nDataBCDT.AudioIdx,
-            g_project->nDataSCDT.RF,
-            g_project->nDataSCDT.PCB,
-            g_project->nDataBCDT.Feature[0],
-            g_project->nDataBCDT.Feature[1],
-            g_project->nDataBCDT.Feature[2],
-            g_project->nDataBCDT.Feature[3],
-            g_project->nDataBCDT.Feature[4],
-            g_project->nDataBCDT.Feature[5],
-            g_project->nDataBCDT.Feature[6],
-            g_project->nDataBCDT.Feature[7],
-            g_project->nDataBCDT.Feature[8],
-            g_project->nDataBCDT.Feature[9],
-            g_project->nDataECDT.Version,
-            g_project->nDataECDT.Is_confidential);
-
+    
+	    if(g_project->nDataBCDT.ProjectNo < 100000){
+			pr_err("KE new cdt newcdt:%d nVersion:%d Project:%d, Dtsi:%d, Audio:%d, nRF:%d, PCB:%d Feature0-9:%d %d %d %d %d %d %d %d %d %d eng_version:%d confidential:%d\n",
+				newcdt,
+				g_project->Version,
+				g_project->nDataBCDT.ProjectNo,
+				g_project->nDataBCDT.DtsiNo,
+				g_project->nDataBCDT.AudioIdx,
+				g_project->nDataSCDT.RF,
+				g_project->nDataSCDT.PCB,
+				g_project->nDataBCDT.Feature[0],
+				g_project->nDataBCDT.Feature[1],
+				g_project->nDataBCDT.Feature[2],
+				g_project->nDataBCDT.Feature[3],
+				g_project->nDataBCDT.Feature[4],
+				g_project->nDataBCDT.Feature[5],
+				g_project->nDataBCDT.Feature[6],
+				g_project->nDataBCDT.Feature[7],
+				g_project->nDataBCDT.Feature[8],
+				g_project->nDataBCDT.Feature[9],
+				g_project->nDataECDT.Version,
+				g_project->nDataECDT.Is_confidential);
+		}else{
+			pr_err("KE new cdt newcdt:%d nVersion:%d Project:%X, Dtsi:%X, Audio:%X, nRF:%d, PCB:%d Feature0-9:%d %d %d %d %d %d %d %d %d %d eng_version:%d confidential:%d\n",
+				newcdt,
+				g_project->Version,
+				g_project->nDataBCDT.ProjectNo,
+				g_project->nDataBCDT.DtsiNo,
+				g_project->nDataBCDT.AudioIdx,
+				g_project->nDataSCDT.RF,
+				g_project->nDataSCDT.PCB,
+				g_project->nDataBCDT.Feature[0],
+				g_project->nDataBCDT.Feature[1],
+				g_project->nDataBCDT.Feature[2],
+				g_project->nDataBCDT.Feature[3],
+				g_project->nDataBCDT.Feature[4],
+				g_project->nDataBCDT.Feature[5],
+				g_project->nDataBCDT.Feature[6],
+				g_project->nDataBCDT.Feature[7],
+				g_project->nDataBCDT.Feature[8],
+				g_project->nDataBCDT.Feature[9],
+				g_project->nDataECDT.Version,
+				g_project->nDataECDT.Is_confidential);
+			}
         pr_err("OCP: %d 0x%x %c %d 0x%x %c\n",
             g_project->nDataSCDT.PmicOcp[0],
             g_project->nDataSCDT.PmicOcp[1],
@@ -245,7 +266,7 @@ unsigned int is_new_cdt(void)/*Q and R is new*/
     np = of_find_node_by_name(NULL, "oplus_project");
     ret = of_property_read_u32(np,"newcdt", &newcdt);
     if(ret){
-        pr_err("read newcdt fail\n");
+//        pr_err("read newcdt fail\n");
 		return 0;
     }
     if(newcdt == 1) {
@@ -391,7 +412,7 @@ bool is_confidential(void)
     init_project_version();
 
     if(!is_new_cdt()){
-        is_confidential_oldcdt();
+        return is_confidential_oldcdt();
     }
 
     return g_project?g_project->nDataECDT.Is_confidential:-EINVAL;
@@ -575,7 +596,11 @@ static int project_read_func(struct seq_file *s, void *v)
 
     switch(Ptr2UINT32(p)) {
     case PROJECT_VERSION:
-        seq_printf(s, "%d", get_project());
+	    if(get_project() <100000){
+			seq_printf(s, "%d", get_project());
+		}else{
+			seq_printf(s, "%X", get_project()); 
+		}
         break;
     case PCB_VERSION:
         seq_printf(s, "%d", get_PCB_Version());

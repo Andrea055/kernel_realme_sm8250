@@ -202,6 +202,7 @@ static const struct proc_ops proc_shell_fops = {
 	.proc_write = proc_shell_write,
 	.proc_read = seq_read,
 	.proc_release = single_release,
+	.proc_lseek = default_llseek,
 };
 #else
 static const struct file_operations proc_shell_fops = {

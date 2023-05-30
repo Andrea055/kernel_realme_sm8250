@@ -57,7 +57,7 @@ static int write_param_partition(const char *buf, unsigned long count,
 	}
 
 	fs = get_fs();
-	set_fs(KERNEL_DS);
+	set_fs(get_ds());
 
 	ret = filp->f_op->llseek(filp, offset, SEEK_SET);
 	if(ret < 0){
