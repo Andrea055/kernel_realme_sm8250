@@ -26,6 +26,8 @@
 #include <oplus_chg_ic.h>
 #include <linux/nvmem-consumer.h>
 
+#include "test-kit.h"
+
 struct oplus_virtual_buck_child {
 	struct oplus_chg_ic_dev *ic_dev;
 	int index;
@@ -77,7 +79,60 @@ struct oplus_virtual_buck_ic {
 
 	bool otg_switch;
 	struct nvmem_cell	*soc_backup_nvmem;
+
+#if IS_ENABLED(CONFIG_OPLUS_CHG_TEST_KIT)
+#ifndef CONFIG_OPLUS_CHARGER_MTK
+	struct test_feature *uart_gpio_test;
+#endif
+#endif
 };
+
+#if IS_ENABLED(CONFIG_OPLUS_CHG_TEST_KIT)
+#ifndef CONFIG_OPLUS_CHARGER_MTK
+#define UART_TX_INFO_INDEX	0
+#define UART_RX_INFO_INDEX	1
+struct test_kit_qcom_soc_gpio_info g_uart_gpio_info[] = {
+	{
+		.name = "uart_tx",
+		.is_out = true,
+		.is_high = false,
+		.func = 0,
+		.pull = 0,
+		.drive = 2,
+	},
+	{
+		.name = "uart_rx",
+		.is_out = false,
+		.is_high = false,
+		.func = 0,
+		.pull = 0,
+		.drive = 2,
+	},
+	{}
+};
+
+const struct test_feature_cfg g_uart_gpio_test_cfg = {
+	.name = "uart_gpio_test",
+	.test_info = (void *)g_uart_gpio_info,
+	.test_func = test_kit_qcom_soc_gpio_test,
+};
+
+static int oplus_virtual_buck_test_kit_init(struct oplus_virtual_buck_ic *chip)
+{
+	chip->uart_gpio_test = test_feature_register(&g_uart_gpio_test_cfg, chip);
+	if (IS_ERR_OR_NULL(chip->uart_gpio_test))
+		chg_err("uart_gpio_test register error");
+
+	return 0;
+}
+
+static void oplus_virtual_buck_test_kit_exit(struct oplus_virtual_buck_ic *chip)
+{
+	if (!IS_ERR_OR_NULL(chip->uart_gpio_test))
+		test_feature_unregister(chip->uart_gpio_test);
+}
+#endif /* CONFIG_OPLUS_CHARGER_MTK */
+#endif /* CONFIG_OPLUS_CHG_TEST_KIT */
 
 static int oplus_chg_vb_set_typec_mode(struct oplus_chg_ic_dev *ic_dev,
 				       enum oplus_chg_typec_port_role_type mode);
@@ -458,6 +513,32 @@ static int oplus_vc_chg_2uart_pinctrl_init(struct oplus_virtual_buck_ic *chip)
 	struct pinctrl		*chg_2uart_pinctrl;
 	struct pinctrl_state	*chg_2uart_active;
 	struct pinctrl_state	*chg_2uart_sleep;
+#if IS_ENABLED(CONFIG_OPLUS_CHG_TEST_KIT)
+#ifndef CONFIG_OPLUS_CHARGER_MTK
+	struct device_node *node = chip->dev->of_node;
+	struct gpio_chip *gpio_chip;
+	int uart_tx, uart_rx;
+#endif /* CONFIG_OPLUS_CHARGER_MTK */
+#endif /* CONFIG_OPLUS_CHG_TEST_KIT */
+
+#if IS_ENABLED(CONFIG_OPLUS_CHG_TEST_KIT)
+#ifndef CONFIG_OPLUS_CHARGER_MTK
+	uart_tx = of_get_named_gpio(node, "oplus,uart_tx-gpio", 0);
+	if (gpio_is_valid(uart_tx)) {
+		gpio_chip = gpio_to_chip(uart_tx);
+		g_uart_gpio_info[UART_TX_INFO_INDEX].chip = gpio_chip;
+		g_uart_gpio_info[UART_TX_INFO_INDEX].num =
+			uart_tx - gpio_chip->base;
+	}
+	uart_rx = of_get_named_gpio(node, "oplus,uart_rx-gpio", 0);
+	if (gpio_is_valid(uart_rx)) {
+		gpio_chip = gpio_to_chip(uart_rx);
+		g_uart_gpio_info[UART_RX_INFO_INDEX].chip = gpio_chip;
+		g_uart_gpio_info[UART_RX_INFO_INDEX].num =
+			uart_rx - gpio_chip->base;
+	}
+#endif /* CONFIG_OPLUS_CHARGER_MTK */
+#endif /* CONFIG_OPLUS_CHG_TEST_KIT */
 
 	chg_2uart_pinctrl = devm_pinctrl_get(chip->dev);
 
@@ -2696,7 +2777,7 @@ static int oplus_common_get_shutdown_soc(struct oplus_virtual_buck_ic *chip, int
 		}
 
 		if (len <= 0 || len > sizeof(soc)) {
-			chg_err("nvmem cell length out of range %d\n", len);
+			chg_err("nvmem cell length out of range %lu\n", len);
 			ret = -EINVAL;
 			goto get_soc_end;
 		}
@@ -5148,6 +5229,10 @@ static int oplus_virtual_buck_probe(struct platform_device *pdev)
 	chip->ic_dev->debug.func_num = ARRAY_SIZE(oplus_vb_overwrite_funcs);
 #endif
 
+#if IS_ENABLED(CONFIG_OPLUS_CHG_TEST_KIT)
+	oplus_virtual_buck_test_kit_init(chip);
+#endif
+
 	chg_err("probe success\n");
 	return 0;
 
@@ -5178,6 +5263,9 @@ static int oplus_virtual_buck_remove(struct platform_device *pdev)
 
 	if (chip->ic_dev->online)
 		oplus_chg_vb_exit(chip->ic_dev);
+#if IS_ENABLED(CONFIG_OPLUS_CHG_TEST_KIT)
+	oplus_virtual_buck_test_kit_exit(chip);
+#endif
 	devm_oplus_chg_ic_unregister(&pdev->dev, chip->ic_dev);
 	if (oplus_vc_ccdetect_gpio_support(chip))
 		gpio_free(chip->misc_gpio.ccdetect_gpio);
@@ -5198,7 +5286,6 @@ static const struct of_device_id oplus_virtual_buck_match[] = {
 	{ .compatible = "oplus,virtual_buck" },
 	{},
 };
-
 
 static struct platform_driver oplus_virtual_buck_driver = {
 	.driver		= {

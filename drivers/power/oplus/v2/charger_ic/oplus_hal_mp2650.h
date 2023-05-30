@@ -617,8 +617,6 @@ struct chip_mp2650 {
 	struct pinctrl_state *acok_default;
 	struct delayed_work plugin_work;
 
-	struct completion resume_ack;
-
 	atomic_t charger_suspended;
 	bool probe_flag;
 	bool acok;

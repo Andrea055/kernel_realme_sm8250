@@ -768,6 +768,7 @@ struct oplus_chg_wls {
 	bool support_get_tx_pwr;
 	bool support_epp_plus;
 	bool support_tx_boost;
+	bool support_wls_and_tx_boost;
 	bool rx_wake_lock_on;
 	bool trx_wake_lock_on;
 	bool usb_present;

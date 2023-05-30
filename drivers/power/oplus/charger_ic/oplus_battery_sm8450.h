@@ -260,7 +260,6 @@ enum usb_property_id {
 	USB_PPS_GET_DISCONNECT_STATUS,
 	USB_PPS_VOOCPHY_ENABLE,
 	USB_IN_STATUS,
-	USB_GET_BATT_CURR,
 	/*USB_ADSP_TRACK_DEBUG,*/
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 	USB_TEMP,
@@ -410,7 +409,9 @@ struct oplus_custom_gpio_pinctrl {
 	int tx_boost_en_gpio;
 	int tx_ovp_en_gpio;
 	int wrx_ovp_off_gpio;
+	int mcu_en_gpio;
 	struct mutex pinctrl_mutex;
+	struct mutex switch1_pinctrl_mutex;
 	struct pinctrl *vchg_trig_pinctrl;
 	struct pinctrl_state *vchg_trig_default;
 	struct pinctrl		*ccdetect_pinctrl;
@@ -437,6 +438,9 @@ struct oplus_custom_gpio_pinctrl {
 	struct pinctrl		*wrx_ovp_off_pinctrl;
 	struct pinctrl_state	*wrx_ovp_off_active;
 	struct pinctrl_state	*wrx_ovp_off_sleep;
+	struct pinctrl		*mcu_en_pinctrl;
+	struct pinctrl_state *mcu_en_active;
+	struct pinctrl_state *mcu_en_sleep;
 };
 #endif
 
@@ -585,6 +589,7 @@ struct battery_chg_dev {
 	struct completion adsp_track_read_ack;
 	struct adsp_track_read_resp_msg adsp_track_read_buffer;
 	struct delayed_work adsp_track_notify_work;
+	struct delayed_work mcu_en_init_work;
 #endif
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	struct mutex	pps_read_buffer_lock;

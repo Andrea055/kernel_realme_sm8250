@@ -4689,7 +4689,7 @@ static int chg_mtk_drm_notifier_callback(struct notifier_block *nb,
 	if (!chip) {
 		return 0;
 	}
-	chg_info("mtk gki notifier event:%d, blank:%d", event, *blank);
+	chg_info("mtk gki notifier event:%lu, blank:%d", event, *blank);
 	switch (event) {
 	case MTK_DISP_EARLY_EVENT_BLANK:
 		if (*blank == MTK_DISP_BLANK_UNBLANK)
@@ -4697,14 +4697,18 @@ static int chg_mtk_drm_notifier_callback(struct notifier_block *nb,
 		else if (*blank == MTK_DISP_BLANK_POWERDOWN)
 			oplus_comm_set_led_on(chip, false);
 		else
-			chg_err("%s: receives wrong data EARLY_BLANK:%d\n", __func__, blank);
+			chg_err("receives wrong data EARLY_BLANK:%d\n", *blank);
+		break;
 	case MTK_DISP_EVENT_BLANK:
 		if (*blank == MTK_DISP_BLANK_UNBLANK)
 			oplus_comm_set_led_on(chip, true);
 		else if (*blank == MTK_DISP_BLANK_POWERDOWN)
 			oplus_comm_set_led_on(chip, false);
 		else
-			chg_err("%s: receives wrong data BLANK:%d\n", __func__, blank);
+			chg_err("receives wrong data BLANK:%d\n", *blank);
+		break;
+	default:
+		break;
 	}
 	return 0;
 }

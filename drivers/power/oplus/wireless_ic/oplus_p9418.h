@@ -150,6 +150,8 @@ struct oplus_p9418_ic{
 	u64			upto_ble_time;		/* enable tx to get mac time(ms) */
 	u64			charger_done_time;	/* enable tx to charger done time(min) */
 	uint32_t		power_expired_time;	/* charger done expired time(min) */
+	unsigned char *wls_pen_fwdata;
+	int pen_fw_lenth;
 	struct delayed_work check_point_dwork;
 };
 
@@ -161,6 +163,13 @@ int p9418_get_booster_en_val(void);
 bool p9418_firmware_is_updating(void);
 bool p9418_check_chip_is_null(void);
 void p9418_ept_type_detect_func(struct oplus_p9418_ic *chip);
+
+#ifndef CONFIG_OPLUS_CHARGER_MTK
+extern struct blocking_notifier_head hall_notifier;
+#else
+extern int wireless_register_notify(struct notifier_block *nb);
+extern int wireless_unregister_notify(struct notifier_block *nb);
+#endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 int p9418_driver_init(void);

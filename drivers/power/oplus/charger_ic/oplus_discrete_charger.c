@@ -219,6 +219,11 @@ static bool is_ext_mp2650_chg_ops(void)
 	return (strncmp(oplus_chg_ops_name_get(), "ext-mp2650", CHG_OPS_LEN) == 0);
 }
 
+static bool is_ext_sy6970_chg_ops(void)
+{
+	return (strncmp(oplus_chg_ops_name_get(), "ext-sy6970", 64) == 0);
+}
+
 static bool is_ext_sy6974b_chg_ops(void)
 {
 	return (strncmp(oplus_chg_ops_name_get(), "ext-sy6974b", CHG_OPS_LEN) == 0);
@@ -957,6 +962,7 @@ void oplus_ccdetect_enable(void)
 
 	/* set DRP mode */
 	if (chg != NULL && chg->tcpc != NULL) {
+		pm_wakeup_dev_event(chg->dev, 2000, true);
 		tcpm_typec_change_role_postpone(chg->tcpc, TYPEC_ROLE_TRY_SNK, true);
 		pr_err("%s: set drp", __func__);
 	} else if (chg != NULL && chg->external_cclogic) {
@@ -982,6 +988,7 @@ void oplus_ccdetect_disable(void)
 
 	/* set SINK mode */
 	if (chg != NULL && chg->tcpc != NULL) {
+		pm_wakeup_dev_event(chg->dev, 2000, true);
 		tcpm_typec_change_role_postpone(chg->tcpc,TYPEC_ROLE_SNK, true);
 		pr_err("%s: set sink", __func__);
 	} else if (chg != NULL && chg->external_cclogic) {
@@ -2430,7 +2437,7 @@ int qpnp_get_prop_charger_voltage_now(void)
 
 	if (is_ext_mp2650_chg_ops()) {
 		chg_vol = mp2650_get_vbus_voltage();
-	} else if (is_ext_sy6974b_chg_ops()) {
+	} else if (is_ext_sy6974b_chg_ops() || is_ext_sy6970_chg_ops()) {
 		if (!chip->charger_exist && !chip->ac_online)
 			return 0;
 		if (oplus_chg_get_voocphy_support() == AP_SINGLE_CP_VOOCPHY
@@ -2694,7 +2701,7 @@ static int discrete_charger_probe(struct platform_device *pdev)
 	}
 #endif
 #endif
-
+	device_init_wakeup(chg->dev, 1);
 	chg_err("discrete charger probed successfully\n");
 
 	return rc;

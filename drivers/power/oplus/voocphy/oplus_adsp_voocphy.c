@@ -88,6 +88,11 @@ int __attribute__((weak)) oplus_adsp_voocphy_get_enable(void)
 	return 0;
 }
 
+int __attribute__((weak)) oplus_adsp_reset_voocphy(void)
+{
+	return 0;
+}
+
 int __attribute__((weak)) oplus_adsp_batt_curve_current(void)
 {
 	return -ENOMEM;
@@ -96,6 +101,7 @@ int __attribute__((weak)) oplus_adsp_batt_curve_current(void)
 static struct oplus_voocphy_operations oplus_adsp_voocphy_ops = {
 	.adsp_voocphy_enable = oplus_adsp_voocphy_enable,
 	.adsp_voocphy_reset_again = oplus_adsp_voocphy_reset_again,
+	.adsp_reset_voocphy = oplus_adsp_reset_voocphy,
 	.adsp_batt_curve_current = oplus_adsp_batt_curve_current,
 	.adsp_force_svooc = oplus_adsp_force_svooc,
 	.get_adsp_voocphy_enable = oplus_adsp_voocphy_get_enable,

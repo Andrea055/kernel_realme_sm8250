@@ -246,6 +246,12 @@ enum chg_data_idx_enum {
 };
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
+enum chg_type_curve_enum {
+	CHARGER_NORMAL_CHG_CURVE,
+	CHARGER_FASTCHG_SVOOC_CURVE,
+	CHARGER_FASTCHG_VOOC_AND_QCPD_CURVE,
+};
+
 struct oplus_custom_gpio_pinctrl {
 	int vchg_trig_gpio;
 	int ccdetect_gpio;
@@ -440,6 +446,7 @@ struct mtk_charger {
 	struct ntc_temp * usb_ntc_param;
 #ifdef CONFIG_THERMAL
 	struct thermal_zone_device *cp_temp_tzd;
+	struct thermal_zone_device *sub_batt_temp_tzd;
 #endif
 	int ccdetect_gpio;
 	int ccdetect_irq;

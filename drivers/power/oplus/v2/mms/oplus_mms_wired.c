@@ -3309,7 +3309,9 @@ static int oplus_mms_wired_probe(struct platform_device *pdev)
 
 	of_platform_populate(chip->dev->of_node, NULL, NULL, chip->dev);
 
-	rc = of_property_read_u32(chip->dev->of_node, "oplus,usbtemp_batttemp_gap", &chip->usbtemp_batttemp_gap);
+	rc = of_property_read_u32(chip->dev->of_node,
+				  "oplus,usbtemp_batttemp_gap",
+				  &chip->usbtemp_batttemp_gap);
 	if (rc < 0) {
 		chg_err("read oplus,usbtemp_batttemp_gap error, rc=%d\n", rc);
 		chip->usbtemp_batttemp_gap = 17;

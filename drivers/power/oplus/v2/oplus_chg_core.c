@@ -27,18 +27,19 @@ int oplus_is_rf_ftm_mode(void)
 {
 	int boot_mode = get_boot_mode();
 #ifdef CONFIG_OPLUS_CHARGER_MTK
-	if (boot_mode == META_BOOT || boot_mode == FACTORY_BOOT
-			|| boot_mode == ADVMETA_BOOT || boot_mode == ATE_FACTORY_BOOT) {
-		chg_debug(" boot_mode:%d, return\n",boot_mode);
+	if (boot_mode == META_BOOT || boot_mode == FACTORY_BOOT ||
+	    boot_mode == ADVMETA_BOOT || boot_mode == ATE_FACTORY_BOOT) {
+		chg_debug(" boot_mode:%d, return\n", boot_mode);
 		return true;
 	} else {
 		/*chg_debug(" boot_mode:%d, return false\n",boot_mode);*/
 		return false;
 	}
 #else
-	if(boot_mode == MSM_BOOT_MODE__RF || boot_mode == MSM_BOOT_MODE__WLAN
-			|| boot_mode == MSM_BOOT_MODE__FACTORY){
-		chg_debug(" boot_mode:%d, return\n",boot_mode);
+	if (boot_mode == MSM_BOOT_MODE__RF ||
+	    boot_mode == MSM_BOOT_MODE__WLAN ||
+	    boot_mode == MSM_BOOT_MODE__FACTORY) {
+		chg_debug(" boot_mode:%d, return\n", boot_mode);
 		return true;
 	} else {
 		/*chg_debug(" boot_mode:%d, return false\n",boot_mode);*/

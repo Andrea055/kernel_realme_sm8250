@@ -4518,5 +4518,6 @@ static void __exit mtk_charger_exit(void)
 module_exit(mtk_charger_exit);
 
 
+MODULE_AUTHOR("wy.chuang <wy.chuang@mediatek.com>");
 MODULE_DESCRIPTION("MTK Charger Driver");
 MODULE_LICENSE("GPL");

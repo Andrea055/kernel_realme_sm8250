@@ -14,6 +14,7 @@
 #include "../oplus_gauge.h"
 #include "../oplus_vooc.h"
 #include "oplus_switching.h"
+#include "../oplus_ufcs.h"
 #include "../oplus_pps.h"
 
 #define USB_20C 20
@@ -176,9 +177,7 @@ int oplus_usbtemp_dischg_action(struct oplus_chg_chip *chip)
 #endif
 		oplus_set_usb_temp_high(chip);
 		if (oplus_vooc_get_fastchg_started() == true) {
-			oplus_chg_set_chargerid_switch_val(0);
-			oplus_vooc_switch_mode(NORMAL_CHARGER_MODE);
-			oplus_vooc_reset_mcu();
+			oplus_vooc_turn_off_fastchg();
 			if (oplus_pps_get_support_type() == PPS_SUPPORT_2CP) {
 				oplus_pps_set_pps_mos_enable(false);
 			}
@@ -192,6 +191,12 @@ int oplus_usbtemp_dischg_action(struct oplus_chg_chip *chip)
 		if (is_vooc_support_single_batt_svooc() == true) {
 			vooc_enable_cp_ovp(0);
 		}
+
+		if (oplus_is_ufcs_charging()) {
+			chg_err("oplus_ufcs_stop_usb_temp\n");
+			oplus_ufcs_stop_usb_temp();
+		}
+
 		if (chip->chg_ops->really_suspend_charger)
 			chip->chg_ops->really_suspend_charger(true);
 		else
@@ -1082,19 +1087,19 @@ bool oplus_usbtemp_temp_rise_fast_without_batt_temp(struct oplus_chg_chip *chip)
 		return false;
 
 	if (chip->usbtemp_curr_status == OPLUS_USBTEMP_LOW_CURR) {
-		if ((((chip->usb_temp_l - chip->tbatt_temp / 10) >
+		if ((((chip->usb_temp_l - chip->tbatt_temp / 10) >=
 				chip->usbtemp_temp_gap_low_without_batt_temp)
 				&& (chip->usb_temp_l < USB_100C)) ||
-			(((chip->usb_temp_r - chip->tbatt_temp / 10) >
+			(((chip->usb_temp_r - chip->tbatt_temp / 10) >=
 				chip->usbtemp_temp_gap_low_without_batt_temp)
 				&& (chip->usb_temp_r < USB_100C)))
 			return true;
 		return false;
 	} else if (chip->usbtemp_curr_status == OPLUS_USBTEMP_HIGH_CURR) {
-		if ((((chip->usb_temp_l - chip->tbatt_temp / 10) >
+		if ((((chip->usb_temp_l - chip->tbatt_temp / 10) >=
 				chip->usbtemp_temp_gap_high_without_batt_temp)
 				&& (chip->usb_temp_l < USB_100C)) ||
-			(((chip->usb_temp_r - chip->tbatt_temp / 10) >
+			(((chip->usb_temp_r - chip->tbatt_temp / 10) >=
 				chip->usbtemp_temp_gap_high_without_batt_temp)
 				&& (chip->usb_temp_r < USB_100C)))
 			return true;
@@ -1329,10 +1334,10 @@ int oplus_usbtemp_monitor_common_new_method(void *data)
 	int condition;
 	static bool curr_range_change = false;
 	int batt_current = 0;
-	struct timespec curr_range_change_first_time;
-	struct timespec curr_range_change_last_time;
+	struct timespec curr_range_change_first_time = (struct timespec){0};
+	struct timespec curr_range_change_last_time = (struct timespec){0};
 	bool usbtemp_first_time_in_curr_range = false;
-	static int current_read_count = 0;
+	static current_read_count = 0;
 	struct oplus_chg_chip *chip = (struct oplus_chg_chip *) data;
 #ifndef CONFIG_OPLUS_CHARGER_MTK
 	struct smb_charger *chg = NULL;
@@ -1400,6 +1405,7 @@ int oplus_usbtemp_monitor_common_new_method(void *data)
 			}
 			current_read_count = 0;
 		}
+		chip->usbtemp_batt_current = chip->usbtemp_batt_current * -1;
 
 		oplus_update_usbtemp_current_status_new_method(chip);
 

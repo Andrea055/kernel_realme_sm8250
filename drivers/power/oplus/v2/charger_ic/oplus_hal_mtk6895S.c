@@ -82,12 +82,6 @@ bool oplus_chg_check_chip_is_null(void)
 }
 EXPORT_SYMBOL(oplus_chg_check_chip_is_null);
 
-int oplus_chg_check_ui_soc(void)
-{
-	return true;
-}
-EXPORT_SYMBOL(oplus_chg_check_ui_soc);
-
 int oplus_is_vooc_project(void)
 {
 	int vooc_project = 0;
@@ -1161,7 +1155,7 @@ static void mtk_charger_start_timer(struct mtk_charger *info)
 	info->endtime = end_time;
 	ktime = ktime_set(info->endtime.tv_sec, info->endtime.tv_nsec);
 
-	chr_err("alarm timer start:%d, %ld %ld\n", ret,
+	chr_err("alarm timer start:%d, %lld %ld\n", ret,
 		info->endtime.tv_sec, info->endtime.tv_nsec);
 	alarm_start(&info->charger_timer, ktime);
 }
@@ -3557,7 +3551,9 @@ static int psy_charger_get_property(struct power_supply *psy,
 {
 	struct mtk_charger *info;
 	struct charger_device *chg;
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	struct charger_data *pdata;
+#endif
 	int ret = 0;
 	struct chg_alg_device *alg = NULL;
 
@@ -3842,7 +3838,7 @@ static void mtk_tcpc_set_otg_enable(struct oplus_chg_ic_dev *ic_dev, bool en)
 #define OPLUS_SVID 0x22D9
 int oplus_get_adapter_svid(void)
 {
-	int i = 0, j = 0;
+	int i = 0;
 	uint32_t vdos[VDO_MAX_NR] = {0};
 	struct tcpc_device *tcpc_dev = tcpc_dev_get_by_name("type_c_port0");
 	struct tcpm_svid_list svid_list = {0, {0}};
@@ -4137,8 +4133,6 @@ static int  mtk_chg_smt_test(struct oplus_chg_ic_dev *ic_dev, char buf[], int le
 
 static int mtk_chg_input_present(struct oplus_chg_ic_dev *ic_dev, bool *present)
 {
-	struct mtk_charger *chip;
-
 	if (ic_dev == NULL) {
 		chg_err("oplus_chg_ic_dev is NULL");
 		return -ENODEV;
@@ -4148,7 +4142,6 @@ static int mtk_chg_input_present(struct oplus_chg_ic_dev *ic_dev, bool *present)
 		*present = true;
 	else
 		*present = false;
-	/*chg_info("mtk_chg_input_present *present = %d\n", *present);*/
 
 	return 0;
 }

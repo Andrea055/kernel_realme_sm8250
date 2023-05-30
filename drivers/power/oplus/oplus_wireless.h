@@ -146,19 +146,9 @@
 #define DOCK_OAWV01										1
 #define DOCK_OAWV02										2
 #define DOCK_OAWV03										3
-#define DOCK_OAWV04										4
-#define DOCK_OAWV05										5
-#define DOCK_OAWV06										6
 #define DOCK_OAWV07										7
 #define DOCK_OAWV08										8
-#define DOCK_OAWV09										9
-#define DOCK_OAWV10										10
-#define DOCK_OAWV11										11
 #define DOCK_OAWV15										15
-#define DOCK_OAWV16										16
-#define DOCK_OAWV17										17
-#define DOCK_OAWV18										18
-#define DOCK_OAWV19										19
 #define DOCK_THIRD										0x1f
 
 #define DOCK_VERIFY_UNKOWN								0

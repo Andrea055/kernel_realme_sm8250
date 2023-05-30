@@ -82,6 +82,11 @@
 #define BC_PD_SOFT_RESET				0x5A
 #define BC_CHG_STATUS_SET				0x60
 #define BC_ADSP_NOTIFY_AP_SUSPEND_CHG 0X61
+#define BC_ADSP_NOTIFY_AP_CP_BYPASS_INIT                         0x0062
+#define BC_ADSP_NOTIFY_AP_CP_MOS_ENABLE                          0x0063
+#define BC_ADSP_NOTIFY_AP_CP_MOS_DISABLE                         0x0064
+#define BC_PPS_OPLUS                    0x65
+#define BC_ADSP_NOTIFY_TRACK				0x66
 #endif
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
@@ -92,6 +97,9 @@
 #define USB_RESERVE4		0x10
 #define USB_DONOT_USE		0x80000000
 #define PM8350B_BOOST_VOL_MIN_MV 9000
+#define USB_OTG_CURR_LIMIT_MAX   3000
+#define USB_OTG_CURR_LIMIT_HIGH  1700
+#define USB_OTG_REAL_SOC_MIN     10
 #endif
 
 /* Generic definitions */
@@ -102,6 +110,8 @@
 #define WLS_FW_UPDATE_TIME_MS		1000
 #define WLS_FW_BUF_SIZE			128
 #define DEFAULT_RESTRICT_FCC_UA		1000000
+
+#define BATTMNGR_EFAILED		512 /*Error: i2c Operation Failed*/
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 struct oem_read_buffer_req_msg {
@@ -194,6 +204,9 @@ enum battery_property_id {
 	BATT_UPDATE_SOC_SMOOTH_PARAM,
 	BATT_BATTERY_HMAC,
 	BATT_SET_BCC_CURRENT,
+	BATT_ZY0603_CHECK_RC_SFR,
+	BATT_ZY0603_SOFT_RESET,
+	BATT_AFI_UPDATE_DONE,
 #endif
 	BATT_PROP_MAX,
 };
@@ -251,6 +264,7 @@ enum usb_property_id {
 	USB_PPS_GET_DISCONNECT_STATUS,
 	USB_PPS_VOOCPHY_ENABLE,
 	USB_IN_STATUS,
+	USB_GET_BATT_CURR,
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 	USB_PROP_MAX,
 };
@@ -458,7 +472,11 @@ struct battery_chg_dev {
 	int				num_thermal_levels;
 	atomic_t			state;
 	struct work_struct		subsys_up_work;
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	struct work_struct		usb_type_work;
+#else
+	struct delayed_work		usb_type_work;
+#endif
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	int ccdetect_irq;
 	struct delayed_work	suspend_check_work;
@@ -478,6 +496,7 @@ struct battery_chg_dev {
 	struct delayed_work	plugin_irq_work;
 	struct delayed_work	recheck_input_current_work;
 	struct delayed_work	apsd_done_work;
+	struct delayed_work	unsuspend_usb_work;
 /*#ifdef OPLUS_CHG_OP_DEF*/
 	struct delayed_work ctrl_lcm_frequency;
 /*#endif*/
@@ -501,8 +520,10 @@ struct battery_chg_dev {
 
 	struct delayed_work status_keep_clean_work;
 	struct delayed_work status_keep_delay_unlock_work;
+	struct delayed_work pd_type_check_work;
 	struct wakeup_source *status_wake_lock;
 	bool status_wake_lock_on;
+	bool pd_type_checked;
 #endif
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	int vchg_trig_irq;
@@ -542,6 +563,10 @@ struct battery_chg_dev {
 	struct oem_read_buffer_resp_msg  bcc_read_buffer_dump;
 	int otg_scheme;
 	int otg_boost_src;
+	int otg_curr_limit_max;
+	int otg_curr_limit_high;
+	int otg_real_soc_min;
+	int usbtemp_thread_100w_support;
 	bool otg_prohibited;
 	struct notifier_block	ssr_nb;
 	void			*subsys_handle;

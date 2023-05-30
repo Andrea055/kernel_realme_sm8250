@@ -104,6 +104,8 @@ static int usb_status = 0;
 struct delayed_work ccdetect_work;
 struct delayed_work wd0_detect_work;
 
+#define CHG_OPS_LEN 64
+
 extern struct oplus_chg_operations * oplus_get_chg_ops(void);
 extern void oplus_usbtemp_recover_func(struct oplus_chg_chip *chip);
 extern int oplus_usbtemp_monitor_common(void *data);
@@ -5874,10 +5876,29 @@ static int mt_ac_get_property(struct power_supply *psy,
 	return rc;
 }
 
+static bool is_ext_mp2650_chg_ops(void)
+{
+	return (strncmp(oplus_chg_ops_name_get(), "ext-mp2650", CHG_OPS_LEN) == 0);
+}
+
+#define OPLUS_DEFAULT_CHG_VOLT 0
 static int mt_usb_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val)
 {
-	return oplus_usb_get_property(psy, psp, val);
+	int rc = 0;
+	switch (psp) {
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		if (is_ext_mp2650_chg_ops())
+			val->intval = mp2650_get_vbus_voltage() * 1000;
+		else
+			val->intval = OPLUS_DEFAULT_CHG_VOLT;
+		break;
+	default:
+		rc = oplus_usb_get_property(psy, psp, val);
+		break;
+	}
+
+	return 0;
 }
 
 static int battery_prop_is_writeable(struct power_supply *psy,
@@ -5931,6 +5952,7 @@ static enum power_supply_property mt_usb_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
 
 static enum power_supply_property battery_properties[] = {
@@ -6190,6 +6212,22 @@ int oplus_get_fast_chg_type(void)
 	return fast_chg_type;
 }
 
+static bool oplus_pd_without_usb(void)
+{
+	struct tcpc_device *tcpc;
+
+	tcpc = tcpc_dev_get_by_name("type_c_port0");
+	if (!tcpc) {
+		chg_err("get type_c_port0 fail\n");
+		return true;
+	}
+
+	if (!tcpm_inquire_pd_connected(tcpc))
+		return true;
+	return (tcpm_inquire_dpm_flags(tcpc) &
+			DPM_FLAGS_PARTNER_USB_COMM) ? false : true;
+}
+
 int mt_power_supply_type_check(void)
 {
 	int chr_type;
@@ -6209,6 +6247,9 @@ int mt_power_supply_type_check(void)
 	if (chip && chip->wireless_support && !prop.intval &&
 			(oplus_wpc_get_wireless_charge_start() == true || oplus_chg_is_wls_present()))
 		chr_type = POWER_SUPPLY_TYPE_WIRELESS;
+
+	if(!oplus_pd_without_usb())
+		chr_type = POWER_SUPPLY_USB_TYPE_PD_SDP;
 
 	chr_err("charger_type[%d]\n", chr_type);
 
@@ -7494,6 +7535,7 @@ module_exit(mtk_charger_exit);
 oplus_chg_module_register(mtk_charger);
 #endif
 
+MODULE_AUTHOR("wy.chuang <wy.chuang@mediatek.com>");
 MODULE_DESCRIPTION("MTK Charger Driver");
 MODULE_LICENSE("GPL");
 

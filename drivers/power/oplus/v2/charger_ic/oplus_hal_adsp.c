@@ -188,7 +188,7 @@ static void handle_oem_read_buffer(struct battery_chg_dev *bcdev,
 		sizeof(bcdev->read_buffer_dump));*/
 
 	if (len > sizeof(bcdev->read_buffer_dump)) {
-		chg_err("Incorrect length received: %zu expected: %u\n", len,
+		chg_err("Incorrect length received: %zu expected: %lu\n", len,
 		sizeof(bcdev->read_buffer_dump));
 		return;
 	}
@@ -1017,7 +1017,7 @@ static void handle_notification(struct battery_chg_dev *bcdev, void *data,
 	case BC_QC_DETECT:
 		bcdev->hvdcp_detect_ok = true;
 		bcdev->hvdcp_detect_time = cpu_clock(smp_processor_id()) / 1000000;
-		printk(KERN_ERR " HVDCP2 detect: %d, the detect time: %lu\n",
+		printk(KERN_ERR " HVDCP2 detect: %d, the detect time: %llu\n",
 			bcdev->hvdcp_detect_ok, bcdev->hvdcp_detect_time);
 		break;
 	case BC_TYPEC_STATE_CHANGE:

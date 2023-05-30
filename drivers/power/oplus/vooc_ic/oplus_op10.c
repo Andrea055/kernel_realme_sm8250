@@ -1033,6 +1033,7 @@ static int op10_parse_fw_from_array(struct oplus_vooc_chip *chip)
 		chip->firmware_data = op10_fw_data_4450_vooc_ffc_5v6a_4bit;
 		chip->fw_data_count = sizeof(op10_fw_data_4450_vooc_ffc_5v6a_4bit);
 		chip->fw_data_version = op10_fw_data_4450_vooc_ffc_5v6a_4bit[chip->fw_data_count - 4];
+		break;
 	default:
 		break;
 	}

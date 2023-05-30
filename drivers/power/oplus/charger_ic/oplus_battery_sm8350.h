@@ -371,6 +371,7 @@ struct oplus_chg_iio {
 	struct iio_channel	*usbtemp_sup_v_chan;
 	struct iio_channel	*battcon_btb_chan;
 	struct iio_channel	*usbcon_btb_chan;
+	struct iio_channel	*subboard_temp_v_chan;
 };
 #endif
 

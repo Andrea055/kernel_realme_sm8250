@@ -26,8 +26,6 @@
 #include <linux/math64.h>
 #include <linux/power_supply.h>
 #include <mt-plat/upmu_common.h>
-#include <mt-plat/charger_class.h>
-#include <mt-plat/charger_type.h>
 #include <mt-plat/mtk_boot.h>
 
 #include "../../mediatek/charger/mtk_charger_intf.h"
@@ -35,7 +33,16 @@
 #define _BQ25890H_
 #include "oplus_bq2589x_reg.h"
 #include <linux/time.h>
-#include <soc/oppo/oppo_project.h>
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+#include <soc/oplus/oplus_project.h>
+#include <mt-plat/charger_class.h>
+#include <mt-plat/charger_type.h>
+#else
+#include <soc/oplus/system/oplus_project.h>
+#include <mt-plat/v1/charger_class.h>
+#include <mt-plat/v1/charger_type.h>
+#endif
 
 extern void set_charger_ic(int sel);
 extern unsigned int is_project(int project);

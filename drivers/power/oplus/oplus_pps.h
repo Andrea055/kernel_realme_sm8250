@@ -15,106 +15,103 @@
 #include <linux/random.h>
 #include <linux/device.h>
 #include <linux/types.h>
-#define pps_err(fmt, ...) \
-        printk(KERN_ERR "[OPLUS_PPS][%s]"fmt, __func__, ##__VA_ARGS__)
+#define pps_err(fmt, ...)                                                      \
+	printk(KERN_ERR "[OPLUS_PPS][%s]" fmt, __func__, ##__VA_ARGS__)
 /*pps curve*/
-#define PPS_VOL_MAX_V1               		10000
-#define PPS_VOL_MAX_V2               		20000
-#define PPS_VOL_CURVE_LMAX                	5500
+#define PPS_VOL_MAX_V1		10000
+#define PPS_VOL_MAX_V2		20000
+#define PPS_VOL_CURVE_LMAX	5500
 
-#define PPS_CURRENT_MAX               		8000
-#define PPS_CURRENT_3A               		3000
-#define PPS_CURRENT_2A               		2000
-#define PPS_VBAT_DIFF_TIME					round_jiffies_relative(msecs_to_jiffies(600*1000))
-#define BCC_CURRENT_MIN               		(1000/100)
-#define PPS_CP_TDIE_OVER_COUNTS				5
-#define PPS_CP_TDIE_MAX						110
-#define BATT_PPS_SYS_MAX               		40
-#define FULL_PPS_SYS_MAX            		6
-#define PPS_R_AVG_NUM						10
-#define PPS_R_ROW_NUM						7
+#define PPS_CURRENT_MAX		8000
+#define PPS_CURRENT_3A		3000
+#define PPS_CURRENT_2A		2000
+#define PPS_VBAT_DIFF_TIME	round_jiffies_relative(msecs_to_jiffies(600 * 1000))
+#define PPS_CP_TDIE_OVER_COUNTS	5
+#define PPS_CP_TDIE_MAX		110
+#define BATT_PPS_SYS_MAX	40
+#define FULL_PPS_SYS_MAX	6
+#define PPS_R_AVG_NUM		10
+#define PPS_R_ROW_NUM		7
 
 /*pps update time*/
-#define UPDATE_PDO_TIME                     5
-#define UPDATE_FASTCHG_TIME                 1
-#define UPDATE_TEMP_TIME                    1
-#define UPDATE_IBAT_TIME                    1
-#define UPDATE_BCC_TIME                 	2
-#define UPDATE_FULL_TIME_NS                 500*1000*1000
-#define UPDATE_CURVE_TIME_NS                500*1000*1000
-#define UPDATE_FULL_TIME_S                  1
-#define UPDATE_CURVE_TIME_S                 1
+#define UPDATE_PDO_TIME		5
+#define UPDATE_FASTCHG_TIME	1
+#define UPDATE_TEMP_TIME	1
+#define UPDATE_IBAT_TIME	1
+#define UPDATE_BCC_TIME		2
+#define UPDATE_FULL_TIME_NS	(500 * 1000 * 1000)
+#define UPDATE_CURVE_TIME_NS	(500 * 1000 * 1000)
+#define UPDATE_FULL_TIME_S	1
+#define UPDATE_CURVE_TIME_S	1
 
 /*pps power*/
-#define OPLUS_EXTEND_IMIN					6250
-#define OPLUS_EXTEND_VMIN					20000
-#define OPLUS_PPS_IMIN_V3					11000
-#define OPLUS_PPS_IMIN_V1					5000
-#define OPLUS_PPS_POWER_V3					0XF0
-#define OPLUS_PPS_POWER_V2					0X96
-#define OPLUS_PPS_POWER_V1					0X7D
-#define OPLUS_PPS_POWER_CLR					0X0
-
+#define OPLUS_EXTEND_IMIN	6250
+#define OPLUS_EXTEND_VMIN	20000
+#define OPLUS_PPS_IMIN_V3	11000
+#define OPLUS_PPS_IMIN_V1	5000
+#define OPLUS_PPS_POWER_V3	0XF0
+#define OPLUS_PPS_POWER_V2	0X96
+#define OPLUS_PPS_POWER_V1	0X7D
+#define OPLUS_PPS_POWER_CLR	0X0
 
 /*pps protection*/
-#define PPS_MASTER_CP_I2C_ERROR_COUNTS					14
-#define PPS_SLAVE_CP_I2C_ERROR_COUNTS					8
-#define PPS_CP_IBUS_OVER_COUNTS					3
-#define PPS_CP_IBUS_MAX							4500
-#define PPS_CP_IBUS_DIFF						1000
+#define PPS_MASTER_CP_I2C_ERROR_COUNTS	14
+#define PPS_SLAVE_CP_I2C_ERROR_COUNTS	8
+#define PPS_CP_IBUS_OVER_COUNTS		3
+#define PPS_CP_IBUS_MAX			4500
+#define PPS_CP_IBUS_DIFF		1000
 
-#define PPS_CP_TDIE_OVER_COUNTS					5
-#define PPS_CP_TDIE_EXIT_COUNTS					20
-#define PPS_CP_TDIE_MAX							110
+#define PPS_CP_TDIE_OVER_COUNTS		5
+#define PPS_CP_TDIE_EXIT_COUNTS		20
+#define PPS_CP_TDIE_MAX			110
 
-#define PPS_TEMP_OVER_COUNTS					2
-#define PPS_TEMP_RANGE_THD						10
+#define PPS_TEMP_OVER_COUNTS		2
+#define PPS_TEMP_RANGE_THD		10
 
-#define PPS_CURVE_OV_CNT         				5
-#define PPS_CP_IBUS_ABORNAL_MIN         		100
+#define PPS_CURVE_OV_CNT		5
+#define PPS_CP_IBUS_ABORNAL_MIN		100
 
-#define PPS_BTB_OV_CNT        				 	8
-#define PPS_TBATT_OV_CNT       					1
-#define PPS_DISCONNECT_IOUT_MIN					300
-#define PPS_DISCONNECT_IOUT_CNT					3
+#define PPS_BTB_OV_CNT			8
+#define PPS_TBATT_OV_CNT		1
+#define PPS_DISCONNECT_IOUT_MIN		300
+#define PPS_DISCONNECT_IOUT_CNT		3
 
-#define PPS_FULL_COUNTS_HW						3
-#define PPS_FULL_COUNTS_COOL					6
-#define PPS_FULL_COUNTS_SW						6
-#define PPS_FULL_COUNTS_LOW_CURR				6
+#define PPS_FULL_COUNTS_HW		3
+#define PPS_FULL_COUNTS_COOL		6
+#define PPS_FULL_COUNTS_SW		6
+#define PPS_FULL_COUNTS_LOW_CURR	6
 
-#define PPS_IBAT_LOW_MIN						2000
-#define PPS_IBAT_LOW_CNT         				4
-#define PPS_IBAT_HIGH_CNT         				8
+#define PPS_IBAT_LOW_MIN		2000
+#define PPS_IBAT_LOW_CNT		4
+#define PPS_IBAT_HIGH_CNT		8
 
-#define PPS_VBAT_NUM							2
-#define PPS_R_IBUS_MIN							100
+#define PPS_VBAT_NUM			2
+#define PPS_R_IBUS_MIN			100
 
-#define PPS_IBUS_ABNORMAL_MIN					250
-#define PPS_IBUS_SLAVE_DISABLE_MIN				1300
-#define PPS_IBUS_SLAVE_ENABLE_MIN				1700
-#define PPS_MASTER_ENALBE_CHECK_CNTS			10
-#define PPS_SLAVLE_ENALBE_CHECK_CNTS			2
+#define PPS_IBUS_ABNORMAL_MIN		250
+#define PPS_IBUS_SLAVE_DISABLE_MIN	1300
+#define PPS_IBUS_SLAVE_ENABLE_MIN	1700
+#define PPS_MASTER_ENALBE_CHECK_CNTS	10
+#define PPS_SLAVLE_ENALBE_CHECK_CNTS	2
 
 /*pps aciton*/
-#define PPS_ACTION_START_DIFF_VOLT_V1			300
-#define PPS_ACTION_START_DIFF_VOLT_V2			600
-#define PPS_ACTION_CURR_MIN						1000
+#define PPS_ACTION_START_DIFF_VOLT_V1	300
+#define PPS_ACTION_START_DIFF_VOLT_V2	600
+#define PPS_ACTION_CURR_MIN		1000
 
-#define PPS_ACTION_START_DELAY					300
-#define PPS_ACTION_MOS_DELAY					50
-#define PPS_ACTION_VOLT_DELAY					200
-#define PPS_ACTION_CURR_DELAY					200
-#define PPS_ACTION_CHECK_DELAY					500
-#define PPS_ACTION_CHECK_ICURR_CNT				3
-
+#define PPS_ACTION_START_DELAY		300
+#define PPS_ACTION_MOS_DELAY		50
+#define PPS_ACTION_VOLT_DELAY		200
+#define PPS_ACTION_CURR_DELAY		200
+#define PPS_ACTION_CHECK_DELAY		500
+#define PPS_ACTION_CHECK_ICURR_CNT	3
 
 /*pps other*/
-#define PPS_DUMP_REG_CNT 						10
+#define PPS_DUMP_REG_CNT		10
 
-#define OPLUS_CHG_UPDATE_PPS_DELAY            round_jiffies_relative(msecs_to_jiffies(500))
-#define PD_PPS_STATUS_VOLT(pps_status)        (((pps_status) >> 0) & 0xFFFF)
-#define PD_PPS_STATUS_CUR(pps_status)         (((pps_status) >> 16) & 0xFF)
+#define OPLUS_CHG_UPDATE_PPS_DELAY	round_jiffies_relative(msecs_to_jiffies(500))
+#define PD_PPS_STATUS_VOLT(pps_status)	(((pps_status) >> 0) & 0xFFFF)
+#define PD_PPS_STATUS_CUR(pps_status)	(((pps_status) >> 16) & 0xFF)
 
 enum {
 	PPS_BYPASS_MODE = 0,
@@ -144,7 +141,7 @@ enum {
 };
 enum {
 	PPS_TEMP_RANGE_INIT = 0,
-	PPS_TEMP_RANGE_LITTLE_COLD,/*0 ~ 5*/
+	PPS_TEMP_RANGE_LITTLE_COLD, /*0 ~ 5*/
 	PPS_TEMP_RANGE_COOL, /*5 ~ 12*/
 	PPS_TEMP_RANGE_LITTLE_COOL, /*12~16*/
 	PPS_TEMP_RANGE_NORMAL_LOW, /*16~25*/
@@ -216,12 +213,12 @@ enum {
 	PPS_SUPPORT_VOOCPHY,
 };
 enum {
-	BATT_CURVE_TEMP_RANGE_LITTLE_COLD,/*0 ~ 5*/
+	BATT_CURVE_TEMP_RANGE_LITTLE_COLD, /*0 ~ 5*/
 	BATT_CURVE_TEMP_RANGE_COOL, /*5 ~ 12*/
-	BATT_CURVE_TEMP_RANGE_LITTLE_COOL,/*12~20*/
-	BATT_CURVE_TEMP_RANGE_NORMAL_LOW,/*20~35*/
-	BATT_CURVE_TEMP_RANGE_NORMAL_HIGH,/*35~43*/
-	BATT_CURVE_TEMP_RANGE_WARM,/*43~51*/
+	BATT_CURVE_TEMP_RANGE_LITTLE_COOL, /*12~20*/
+	BATT_CURVE_TEMP_RANGE_NORMAL_LOW, /*20~35*/
+	BATT_CURVE_TEMP_RANGE_NORMAL_HIGH, /*35~43*/
+	BATT_CURVE_TEMP_RANGE_WARM, /*43~51*/
 	BATT_CURVE_TEMP_RANGE_MAX,
 };
 
@@ -269,7 +266,7 @@ typedef enum {
 	PPS_STOP_VOTER_RESISTENSE_OVER = (1 << 3),
 	PPS_STOP_VOTER_IBAT_OVER = (1 << 4),
 	PPS_STOP_VOTER_DISCONNECT_OVER = (1 << 5),
-/*	PPS_STOP_VOTER_CABLE_OVER = (1 << 6),*/
+	/*	PPS_STOP_VOTER_CABLE_OVER = (1 << 6),*/
 	PPS_STOP_VOTER_TIME_OVER = (1 << 7),
 	PPS_STOP_VOTER_PDO_ERROR = (1 << 8),
 	PPS_STOP_VOTER_TYPE_ERROR = (1 << 9),
@@ -310,8 +307,7 @@ struct full_curves_temp {
 	int full_curve_num;
 };
 
-typedef struct oplus_pps_r_info
-{
+typedef struct oplus_pps_r_info {
 	int r0;
 	int r1;
 	int r2;
@@ -321,8 +317,7 @@ typedef struct oplus_pps_r_info
 	int r6;
 } PPS_R_INFO;
 
-typedef struct oplus_pps_r_limit
-{
+typedef struct oplus_pps_r_limit {
 	int limit_exit_mohm;
 	int limit_1a_mohm;
 	int limit_2a_mohm;
@@ -330,14 +325,13 @@ typedef struct oplus_pps_r_limit
 	int limit_4a_mohm;
 } PPS_R_LIMIT;
 
-typedef enum oplus_pps_r_cool_down_ilimit
-{
+typedef enum oplus_pps_r_cool_down_ilimit {
 	R_COOL_DOWN_NOLIMIT = 0,
 	R_COOL_DOWN_4A,
 	R_COOL_DOWN_3A,
 	R_COOL_DOWN_2A,
 	R_COOL_DOWN_1A,
-    R_COOL_DOWN_EXIT,
+	R_COOL_DOWN_EXIT,
 } PPS_R_COOL_DOWN_ILIMIT;
 
 struct oplus_pps_timer {
@@ -371,7 +365,6 @@ struct pps_protection_counts {
 	int tdie_over;
 	int tdie_exit;
 };
-
 
 struct oplus_pps_limits {
 	int default_pps_normal_high_temp;
@@ -445,12 +438,12 @@ struct oplus_pps_chip {
 	struct delayed_work check_vbat_diff_work;
 	struct delayed_work ready_force2svooc_work;
 
-
-/*curve data*/
+	/*curve data*/
 	struct batt_curves_soc batt_curves_third_soc[BATT_CURVE_SOC_RANGE_MAX];
 	struct batt_curves_soc batt_curves_oplus_soc[BATT_CURVE_SOC_RANGE_MAX];
 	struct batt_curves batt_curves;
-	struct full_curves_temp low_curr_full_curves_temp[LOW_CURR_FULL_CURVE_TEMP_MAX];
+	struct full_curves_temp
+		low_curr_full_curves_temp[LOW_CURR_FULL_CURVE_TEMP_MAX];
 	struct oplus_pps_limits limits;
 	struct oplus_pps_timer timer;
 	PPS_R_INFO r_column[PPS_R_AVG_NUM];
@@ -459,7 +452,7 @@ struct oplus_pps_chip {
 	PPS_R_LIMIT r_limit;
 	int rmos_mohm;
 
-/*pps charging data*/
+	/*pps charging data*/
 	struct pps_protection_counts count;
 	int batt_input_current;
 	int ap_batt_volt;
@@ -483,7 +476,7 @@ struct oplus_pps_chip {
 	int cp_master_tdie;
 	int cp_slave_tdie;
 
-/*action data*/
+	/*action data*/
 	int target_charger_volt;
 	int target_charger_current;
 	int ask_charger_volt;
@@ -491,20 +484,20 @@ struct oplus_pps_chip {
 	int ask_charger_volt_last;
 	int ask_charger_current_last;
 	int target_charger_current_pre;
-/*pps current*/
+	/*pps current*/
 	int current_batt_curve;
 	int current_batt_temp;
 	int current_cool_down;
 	int current_normal_cool_down;
 	int cp_ibus_down;
 	int cp_r_down;
-	int	current_bcc;
-	int	cp_tdie_down;
-/*curve data*/
+	int current_bcc;
+	int cp_tdie_down;
+	/*curve data*/
 	bool need_change_curve;
 	int batt_curve_index;
 
-/*pps status*/
+	/*pps status*/
 	int pps_fastchg_batt_temp_status;
 	int pps_temp_cur_range;
 	int pps_low_curr_full_temp_status;
@@ -520,7 +513,7 @@ struct oplus_pps_chip {
 	int pps_fastchg_started;
 	int pps_keep_last_status;
 
-/*other*/
+	/*other*/
 	int cp_slave_enable;
 	int cp_pmid2vout_enable;
 	int cp_master_error_count;
@@ -643,4 +636,3 @@ int oplus_keep_connect_check(void);
 int oplus_pps_get_last_power(void);
 void oplus_pps_clear_last_charging_status(void);
 #endif /*_OPLUS_PPS_H_*/
-

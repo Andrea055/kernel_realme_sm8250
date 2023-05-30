@@ -65,6 +65,7 @@ enum {
 	FAST_NOTIFY_USER_EXIT_FASTCHG,
 	FAST_NOTIFY_SWITCH_TEMP_RANGE,
 	FAST_NOTIFY_ADAPTER_STATUS_ABNORMAL,
+	FAST_NOTIFY_CHECK_FASTCHG_REAL_ALLOW,
 };
 
 enum {
@@ -129,7 +130,8 @@ enum {
 	SETTING_REASON_SVOOC,
 	SETTING_REASON_VOOC,
 	SETTING_REASON_5V2A,
-	SETTING_REASON_PDQC
+	SETTING_REASON_PDQC,
+	SETTING_REASON_COPYCAT_SVOOC
 };
 
 #define VOOC_DEFAULT_HEAD			SVOOC_INVERT_HEAD
@@ -427,6 +429,8 @@ do {				\
 
 #define BCC_CURRENT_MIN               		(1000/100)
 
+#define DEFAULT_CP_IBUS_DEVATION	800
+
 struct vooc_monitor_event {
 	int status;
 	int cnt;
@@ -467,6 +471,12 @@ enum {
 	BATT_SYS_CURVE_MAX,
 };
 
+enum {
+	CHIP_ID_DEFAULT = 0,
+	CHIP_ID_SC8547,
+	CHIP_ID_HL7138,
+};
+
 struct oplus_voocphy_manager {
 	struct i2c_client *client;
 	struct device *dev;
@@ -504,6 +514,8 @@ struct oplus_voocphy_manager {
 	unsigned char vooc2_next_cmd;
 	unsigned char adapter_ask_check_count;
 	unsigned char adapter_check_cmmu_count;
+	unsigned char adapter_is_vbus_ok_count;
+	unsigned char adapter_ask_fastchg_ornot_count;
 	unsigned char adapter_rand_h; //adapter checksum high byte
 	unsigned char adapter_rand_l;  //adapter checksum low byte
 	unsigned int code_id_local; //identification code at voocphy
@@ -616,6 +628,8 @@ struct oplus_voocphy_manager {
 	unsigned int svooc_circuit_r_l;
 	unsigned int svooc_circuit_r_h;
 
+	unsigned int cp_ibus_devation;
+
 	unsigned int slave_cp_enable_thr;
 	unsigned int slave_cp_disable_thr_high;
 	unsigned int slave_cp_disable_thr_low;
@@ -627,6 +641,7 @@ struct oplus_voocphy_manager {
 	bool fastchg_allow;
 	bool start_vaild_frame;
 	bool ask_bat_model_finished;
+	bool reply_bat_model_end;
 	bool ask_vol_again;
 	bool ignore_first_frame;
 	bool ask_vooc3_detect;
@@ -653,7 +668,7 @@ struct oplus_voocphy_manager {
 	bool fastchg_monitor_stop;
 	bool fastchg_commu_ing;
 	bool vooc_move_head;
-
+	bool copycat_vooc_adapter;
 	bool user_exit_fastchg;
 	unsigned char fastchg_stage;
 	bool fastchg_need_reset;
@@ -687,6 +702,9 @@ struct oplus_voocphy_manager {
 	int voocphy_svooc_cp_max_ibus;
 	int voocphy_vooc_cp_max_ibus;
 	int voocphy_cp_max_ibus;
+	int *abnormal_adapter_current;
+	int abnormal_adapter_current_cnt;
+	int abnormal_current_max;
 	int voocphy_vbus_low;
 	int voocphy_vbus_high;
 	int voocphy_max_main_ibat;
@@ -783,7 +801,7 @@ struct oplus_voocphy_manager {
 	char err_reason[OPLUS_CHG_TRACK_DEVICE_ERR_NAME_LEN];
 	char dump_info[OPLUS_CHG_TRACK_CURX_INFO_LEN];
 	struct mutex track_upload_lock;
-
+	struct mutex voocphy_pinctrl_mutex;
 	struct mutex track_i2c_err_lock;
 	u32 debug_force_i2c_err;
 	bool i2c_err_uploading;
@@ -796,6 +814,8 @@ struct oplus_voocphy_manager {
 	oplus_chg_track_trigger *cp_err_load_trigger;
 	struct delayed_work cp_err_load_trigger_work;
 	bool high_curr_setting;
+	bool copycat_vooc_support;
+	int chip_id;
 };
 
 struct oplus_voocphy_operations {
@@ -830,6 +850,8 @@ struct oplus_voocphy_operations {
 	int (*get_voocphy_enable)(struct oplus_voocphy_manager *chip, u8 *data);
 	void (*dump_voocphy_reg)(struct oplus_voocphy_manager *chip);
 	int (*set_dpdm_enable)(struct oplus_voocphy_manager *chip, bool enable);
+	int (*adsp_reset_voocphy)(void);
+	int (*get_chip_id)(void);
 	int (*adsp_force_svooc)(bool enable);
 	int (*get_adsp_voocphy_enable)(void);
 };
@@ -922,6 +944,8 @@ int oplus_voocphy_get_bcc_max_curr(void);
 int oplus_voocphy_get_bcc_min_curr(void);
 bool oplus_voocphy_bcc_get_temp_range(void);
 int oplus_voocphy_get_bcc_exit_curr(void);
+int oplus_voocphy_cp_svooc_init(void);
+int oplus_voocphy_set_chg_enable(bool enable);
 int oplus_voocphy_get_batt_curve_current(void);
 void oplus_adsp_voocphy_force_svooc(int enable);
 int oplus_get_adsp_voocphy_enable(void);

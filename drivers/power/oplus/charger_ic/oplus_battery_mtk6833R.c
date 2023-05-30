@@ -60,6 +60,7 @@
 //====================================================================//
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
+#include <linux/rtc.h>
 #include "../oplus_charger.h"
 #include "../oplus_gauge.h"
 #include "../oplus_vooc.h"
@@ -116,6 +117,13 @@ int oplus_chg_get_chargeric_temp_cal(void);
 int oplus_chg_get_battery_btb_temp_cal(void);
 static bool oplus_ntc_ctrl_is_support(void);
 struct delayed_work adc_switch_update_work;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+#define URGENT_CHECK_THRESHOLD		3
+#define NORMAL_CHECK_UPDATE_INTERVAL	5
+static struct delayed_work fg_update_work;
+static int sleep_time;
+static unsigned long suspend_tm_sec = 0;
+#endif
 static bool oplus_chg_is_support_qcpd(void);
 static int oplus_ntcctrl_gpio_init_cal(struct oplus_chg_chip *chip);
 #endif
@@ -657,7 +665,7 @@ int charger_manager_get_charger_temperature(struct charger_consumer *consumer,
         }
 
 		if (oplus_chg_get_voocphy_support() && oplus_ntc_ctrl_is_support()) {
-			chg_err("chargeric use adc ctrl!\n");
+			chr_debug("chargeric use adc ctrl!\n");
 			//oplus_chg_adc_switch_ctrl();
 			chargeric_temp_thermal = oplus_chg_get_chargeric_temp_cal();
 		} else {
@@ -3947,7 +3955,7 @@ void oplus_set_otg_switch_status(bool value)
 {
 	if (pinfo != NULL && pinfo->tcpc != NULL) {
 		printk(KERN_ERR "[OPLUS_CHG][%s]: otg switch[%d]\n", __func__, value);
-		tcpm_typec_change_role(pinfo->tcpc, value ? TYPEC_ROLE_TRY_SNK : TYPEC_ROLE_SNK);
+		tcpm_typec_change_role_postpone(pinfo->tcpc, value ? TYPEC_ROLE_TRY_SNK : TYPEC_ROLE_SNK, true);
 	}
 }
 EXPORT_SYMBOL(oplus_set_otg_switch_status);
@@ -4572,7 +4580,11 @@ void oplus_set_typec_sinkonly(void)
 	if (pinfo != NULL && pinfo->tcpc != NULL) {
 		printk(KERN_ERR "[OPLUS_CHG][%s]: usbtemp occur otg switch[0]\n", __func__);
 		pinfo->tcpc->typec_role_new = TYPEC_ROLE_SRC;
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		tcpm_typec_change_role(pinfo->tcpc, TYPEC_ROLE_SNK);
+#else
+		tcpm_typec_change_role_postpone(pinfo->tcpc, TYPEC_ROLE_SNK, true);
+#endif
 	}
 };
 EXPORT_SYMBOL(oplus_set_typec_sinkonly);
@@ -4809,7 +4821,7 @@ static int oplus_chg_get_chargeric_temp_val(void)
 
 	ntc_param.ui_dwvolt = oplus_get_temp_volt(&ntc_param);
 	chargeric_temp = oplus_res_to_temp(&ntc_param);
-	chg_err("chargeric_temp = %d chargeric volt = %d\n", chargeric_temp, ntc_param.ui_dwvolt);
+	/*chg_err("chargeric_temp = %d chargeric volt = %d\n", chargeric_temp, ntc_param.ui_dwvolt);*/
 
 	return chargeric_temp;
 }
@@ -5009,7 +5021,7 @@ static void oplus_chg_batcon_adc_switch_ctrl(struct oplus_chg_chip *chip)
 			/*do nothing*/
 		}
 	}
-	chg_err("chargeric_temp_cal=%d, battery_btb_temp_cal=%d, flashlight_temp_uv_cal=%d\n", chargeric_temp_cal, battery_btb_temp_cal, flashlight_temp_uv_cal);
+	chr_debug("chargeric_temp_cal=%d, battery_btb_temp_cal=%d, flashlight_temp_uv_cal=%d\n", chargeric_temp_cal, battery_btb_temp_cal, flashlight_temp_uv_cal);
 }
 
 static void oplus_chg_adc_switch_ctrl(void)
@@ -5232,6 +5244,17 @@ void oplus_adc_switch_update_work(struct work_struct *work)
 		schedule_delayed_work(&adc_switch_update_work, msecs_to_jiffies(800));
 	}
 }
+
+void oplus_fg_update_work(struct work_struct *work)
+{
+	int ui_soc, real_soc;
+
+	ui_soc = oplus_chg_get_ui_soc();
+	real_soc = oplus_chg_get_soc();
+	if (abs(ui_soc - real_soc) > URGENT_CHECK_THRESHOLD ||
+	    sleep_time > NORMAL_CHECK_UPDATE_INTERVAL)
+		oplus_chg_soc_update_when_resume(sleep_time);
+}
 #endif /* OPLUS_FEATURE_CHG_BASIC */
 
 static int mtk_charger_probe(struct platform_device *pdev)
@@ -5432,6 +5455,9 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	if (oplus_chip->dual_charger_support) {
 		INIT_DELAYED_WORK(&pinfo->step_charging_work, mt6360_step_charging_work);
 	}
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+	INIT_DELAYED_WORK(&fg_update_work, oplus_fg_update_work);
+#endif
 #endif
 	return 0;
 }
@@ -5477,6 +5503,90 @@ static void mtk_charger_shutdown(struct platform_device *dev)
 #endif	
 }
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+static int get_current_time(unsigned long *now_tm_sec)
+{
+	struct rtc_time tm;
+	struct rtc_device *rtc = NULL;
+	int rc = 0;
+
+	rtc = rtc_class_open(CONFIG_RTC_HCTOSYS_DEVICE);
+	if (rtc == NULL) {
+		chg_err("%s: unable to open rtc device (%s)\n",
+			__FILE__, CONFIG_RTC_HCTOSYS_DEVICE);
+		return -EINVAL;
+	}
+
+	rc = rtc_read_time(rtc, &tm);
+	if (rc) {
+		chg_err("Error reading rtc device (%s) : %d\n",
+			CONFIG_RTC_HCTOSYS_DEVICE, rc);
+		goto close_time;
+	}
+
+	rc = rtc_valid_tm(&tm);
+	if (rc) {
+		chg_err("Invalid RTC time (%s): %d\n",
+			CONFIG_RTC_HCTOSYS_DEVICE, rc);
+		goto close_time;
+	}
+	rtc_tm_to_time(&tm, now_tm_sec);
+
+close_time:
+	rtc_class_close(rtc);
+
+	return rc;
+}
+
+static int mtk_charger_pm_resume(struct device *dev)
+{
+	unsigned long resume_tm_sec = 0;
+	int ui_soc, real_soc;
+	int rc = 0;
+
+	if (!g_oplus_chip)
+		return 0;
+
+	if (g_oplus_chip->chg_ops != &mtk6360_chg_ops)
+		return 0;
+
+	rc = get_current_time(&resume_tm_sec);
+	if (rc || suspend_tm_sec == -1) {
+		chg_err("RTC read failed\n");
+		sleep_time = 0;
+	} else {
+		sleep_time = resume_tm_sec - suspend_tm_sec;
+	}
+	schedule_delayed_work(&fg_update_work, 0);
+
+	return 0;
+}
+
+static int mtk_charger_pm_suspend(struct device *dev)
+{
+	if (!g_oplus_chip) {
+		return 0;
+	}
+	if (g_oplus_chip->chg_ops != &mtk6360_chg_ops) {
+		return 0;
+	}
+	if (get_current_time(&suspend_tm_sec)) {
+		chg_err("RTC read failed\n");
+		suspend_tm_sec = -1;
+	}
+	cancel_delayed_work_sync(&fg_update_work);
+
+	return 0;
+}
+
+static const struct dev_pm_ops mtk_charger_pm_ops = {
+	.resume		= mtk_charger_pm_resume,
+	.suspend	= mtk_charger_pm_suspend,
+};
+#endif
+#endif
+
 static const struct of_device_id mtk_charger_of_match[] = {
 	{.compatible = "mediatek,charger",},
 	{},
@@ -5496,6 +5606,11 @@ static struct platform_driver charger_driver = {
 	.driver = {
 		   .name = "charger",
 		   .of_match_table = mtk_charger_of_match,
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+		   .pm = &mtk_charger_pm_ops,
+#endif
+#endif
 	},
 };
 

@@ -550,6 +550,7 @@ struct chip_bq27541 {
 	int capacity_pct;
 	int fg_soft_version;
 	bool b_soft_reset_for_zy;
+	atomic_t gauge_i2c_status;
 };
 
 extern bool oplus_gauge_ic_chip_is_null(void);

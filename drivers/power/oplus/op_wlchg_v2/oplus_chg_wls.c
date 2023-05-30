@@ -1937,6 +1937,9 @@ static void oplus_chg_wls_reset_variables(struct oplus_chg_wls *wls_dev) {
 		oplus_chg_comm_status_init(wls_dev->comm_ocm);
 }
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_CHG)
+noinline
+#endif
 static int oplus_chg_wls_get_skewing_current(struct oplus_chg_wls *wls_dev)
 {
 	int cep_curr_ma = 0;
@@ -2082,7 +2085,8 @@ static int oplus_chg_wls_set_trx_enable(struct oplus_chg_wls *wls_dev, bool en)
 		pr_err("FW is upgrading, reverse charging cannot be used\n");
 		return -EFAULT;
 	}
-	if (en && wls_dev->usb_present && !wls_dev->support_tx_boost) {
+	if (en && wls_dev->usb_present && !wls_dev->support_tx_boost &&
+	    !wls_dev->support_wls_and_tx_boost) {
 		pr_err("during USB charging, reverse charging cannot be used");
 		return -EFAULT;
 	}
@@ -2641,7 +2645,8 @@ static ssize_t oplus_chg_wls_ftm_test_show(struct device *dev,
 	int rc;
 	ssize_t index = 0;
 
-	if (oplus_chg_wls_is_usb_present(wls_dev) && !wls_dev->support_tx_boost) {
+	if (oplus_chg_wls_is_usb_present(wls_dev) && !wls_dev->support_tx_boost &&
+	    !wls_dev->support_wls_and_tx_boost) {
 		pr_info("usb online, can't run rx smt test\n");
 		index += sprintf(buf + index, "%d,%s\n", WLS_PATH_RX, "usb_online");
 		goto skip_rx_check;
@@ -3511,7 +3516,7 @@ static void oplus_chg_wls_usb_int_work(struct work_struct *work)
 
 	if (wls_dev->usb_present) {
 		oplus_vote(wls_dev->rx_disable_votable, USB_VOTER, true, 1, false);
-		if (!wls_dev->support_tx_boost)
+		if (!wls_dev->support_tx_boost && !wls_dev->support_wls_and_tx_boost)
 			(void)oplus_chg_wls_set_trx_enable(wls_dev, false);
 		oplus_chg_anon_mod_event(wls_dev->wls_ocm, OPLUS_CHG_EVENT_OFFLINE);
 	} else {
@@ -7348,6 +7353,7 @@ static int oplus_chg_wls_parse_dt(struct oplus_chg_wls *wls_dev)
 	wls_dev->support_fastchg = of_property_read_bool(node, "oplus,support_fastchg");
 	wls_dev->support_get_tx_pwr = of_property_read_bool(node, "oplus,support_get_tx_pwr");
 	wls_dev->support_tx_boost = of_property_read_bool(node, "oplus,support_tx_boost");
+	wls_dev->support_wls_and_tx_boost = of_property_read_bool(node, "oplus,support_wls_and_tx_boost");
 
 	rc = of_property_read_u32(node, "oplus,wls_phone_id",
 				  &wls_dev->wls_phone_id);

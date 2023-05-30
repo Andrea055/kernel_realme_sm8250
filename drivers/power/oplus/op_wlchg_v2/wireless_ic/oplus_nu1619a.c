@@ -2666,6 +2666,30 @@ static void nu1619_clear_irq(struct oplus_nu1619 *chip)
 	return;
 }
 
+static void nu1619_increase_trx_boost_vol(struct oplus_nu1619 *chip)
+{
+	int i;
+	int value;
+	int rc;
+
+	if (chip == NULL) {
+		pr_err("oplus_nu1619 is NULL\n");
+		return;
+	}
+
+	for (i = 1; i < NU1619_TRX_VOL_MAX_MV / NU1619_TRX_VOL_STEP_MV; i++) {
+		value = NU1619_TRX_VOL_START_MV + i * NU1619_TRX_VOL_STEP_MV;
+		if (value > NU1619_TRX_VOL_MAX_MV || nu1619_is_in_tx_mode(chip) == false)
+			break;
+		msleep(NU1619_WAIT_INC_DELAY_MS);
+		rc = nu1619_set_trx_boost_vol(chip, value);
+		if (rc < 0) {
+			pr_err("set trx boost vol(=%d), rc=%d\n", value, rc);
+			return;
+		}
+	}
+}
+
 static void nu1619_tx_event_config(struct oplus_nu1619 *chip, int status, int err)
 {
 	int tx_err = TRACK_WLS_TRX_ERR_DEFAULT;
@@ -2728,7 +2752,6 @@ static void nu1619_tx_event_config(struct oplus_nu1619 *chip, int status, int er
 		}
 	}
 
-
 	if (chip->debug_force_tx_err)
 		tx_err = chip->debug_force_tx_err;
 	if (tx_err != TRACK_WLS_TRX_ERR_DEFAULT)
@@ -2765,6 +2788,13 @@ static void nu1619_event_process(struct oplus_nu1619 *chip)
 	}
 
 	if (nu1619_is_in_tx_mode(chip) == true) {
+		if (temp[0] == NU1619_TX_INCREASE_BOOST_VOL) {
+			pr_err("increase tx vol!\n");
+			nu1619_increase_trx_boost_vol(chip);
+		} else if (temp[0] == NU1619_TX_DECREASE_BOOST_VOL) {
+			pr_err("decrease tx vol!\n");
+			nu1619_set_trx_boost_vol(chip, NU1619_TRX_VOL_START_MV);
+		}
 		nu1619_tx_event_config(chip, temp[0], temp[1]);
 		if (is_wls_ocm_available(chip))
 			oplus_chg_anon_mod_event(chip->wls_ocm, OPLUS_CHG_EVENT_CHECK_TRX);

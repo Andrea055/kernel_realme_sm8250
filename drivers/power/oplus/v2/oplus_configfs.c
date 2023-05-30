@@ -3,7 +3,7 @@
  * Copyright (C) 2020-2022 Oplus. All rights reserved.
  */
 
-#define pr_fmt(fmt) "OPLUS_CHG[FS]: %s[%d]: " fmt, __func__, __LINE__
+#define pr_fmt(fmt) "[FS]([%s][%d]): " fmt, __func__, __LINE__
 
 #include <linux/configfs.h>
 #include <linux/slab.h>
@@ -745,7 +745,7 @@ static ssize_t bcc_parms_show(struct device *dev, struct device_attribute *attr,
 		val = oplus_gauge_get_bcc_parameters(buf);
 
 	len = strlen(buf);
-	chg_err("len: %d\n", len);
+	chg_err("len: %ld\n", len);
 
 	return len;
 }
