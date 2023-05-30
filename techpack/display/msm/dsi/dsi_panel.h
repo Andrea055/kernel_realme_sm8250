@@ -256,6 +256,13 @@ struct dsi_panel_oplus_privite {
 	bit(7):ultra low power aod
 ********************************************/
 	u32 fp_type;
+	// Add for apollo support
+	bool is_apollo_support;
+	u32 sync_brightness_level;
+	bool dc_apollo_sync_enable;
+	u32 dc_apollo_sync_brightness_level;
+	u32 dc_apollo_sync_brightness_level_pcc;
+	u32 dc_apollo_sync_brightness_level_pcc_min;
 	u32 aod_low_brightness_threshold;
 };
 #endif /* OPLUS_BUG_STABILITY */
