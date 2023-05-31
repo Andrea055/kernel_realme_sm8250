@@ -454,7 +454,7 @@ static int msm_gpio_direction_output(struct gpio_chip *chip, unsigned offset, in
 
 	val = readl(pctrl->regs + g->ctl_reg);
 	val |= BIT(g->oe_bit);
-	writel(val, base + g->ctl_reg);
+	writel(val, pctrl->regs + g->ctl_reg);
 
 	raw_spin_unlock_irqrestore(&pctrl->lock, flags);
 
@@ -663,11 +663,11 @@ static void msm_gpio_update_dual_edge_pos(struct msm_pinctrl *pctrl,
 	unsigned pol;
 
 	do {
-		val = readl(base + g->io_reg) & BIT(g->in_bit);
+		val = readl(pctrl->regs + g->io_reg) & BIT(g->in_bit);
 
 		pol = readl(pctrl->regs + g->intr_cfg_reg);
 		pol ^= BIT(g->intr_polarity_bit);
-		writel(pol, base + g->intr_cfg_reg);
+		writel(pol, pctrl->regs + g->intr_cfg_reg);
 
 		val2 = readl(pctrl->regs + g->io_reg) & BIT(g->in_bit);
 		intstat = readl(pctrl->regs + g->intr_status_reg);
@@ -733,9 +733,8 @@ static void _msm_gpio_irq_mask(struct irq_data *d)
 	if (irqd_get_trigger_type(d) & IRQ_TYPE_LEVEL_MASK)
 		val &= ~BIT(g->intr_raw_status_bit);
 
-	val = readl_relaxed(base + g->intr_cfg_reg);
-	val |= BIT(g->intr_enable_bit);
-	writel(val, base + g->intr_cfg_reg);
+	val &= ~BIT(g->intr_enable_bit);
+	writel(val, pctrl->regs + g->intr_cfg_reg);
 
 	clear_bit(d->hwirq, pctrl->enabled_irqs);
 
@@ -788,103 +787,10 @@ static void msm_gpio_irq_mask(struct irq_data *d)
 			if (!dir_conn_data)
 				return;
 
-	raw_spin_lock_irqsave(&pctrl->lock, flags);
-
-	val = readl_relaxed(base + g->intr_status_reg);
-	if (g->intr_ack_high)
-		val |= BIT(g->intr_status_bit);
-	else
-		val &= ~BIT(g->intr_status_bit);
-	writel_relaxed(val, base + g->intr_status_reg);
-
-	if (test_bit(d->hwirq, pctrl->dual_edge_irqs))
-		msm_gpio_update_dual_edge_pos(pctrl, g, d);
-
-	raw_spin_unlock_irqrestore(&pctrl->lock, flags);
-}
-
-static int msm_gpio_irq_set_type(struct irq_data *d, unsigned int type)
-{
-	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-	struct msm_pinctrl *pctrl = gpiochip_get_data(gc);
-	const struct msm_pingroup *g;
-	unsigned long flags;
-	void __iomem *base;
-	u32 val;
-
-	g = &pctrl->soc->groups[d->hwirq];
-	base = reassign_pctrl_reg(pctrl->soc, d->hwirq);
-
-	raw_spin_lock_irqsave(&pctrl->lock, flags);
-
-	/*
-	 * For hw without possibility of detecting both edges
-	 */
-	if (g->intr_detection_width == 1 && type == IRQ_TYPE_EDGE_BOTH)
-		set_bit(d->hwirq, pctrl->dual_edge_irqs);
-	else
-		clear_bit(d->hwirq, pctrl->dual_edge_irqs);
-
-	/* Route interrupts to application cpu */
-	val = readl_relaxed(base + g->intr_target_reg);
-	val &= ~(7 << g->intr_target_bit);
-	val |= g->intr_target_kpss_val << g->intr_target_bit;
-	writel_relaxed(val, base + g->intr_target_reg);
-
-	/* Update configuration for gpio.
-	 * RAW_STATUS_EN is left on for all gpio irqs. Due to the
-	 * internal circuitry of TLMM, toggling the RAW_STATUS
-	 * could cause the INTR_STATUS to be set for EDGE interrupts.
-	 */
-	val = readl_relaxed(base + g->intr_cfg_reg);
-	val |= BIT(g->intr_raw_status_bit);
-	if (g->intr_detection_width == 2) {
-		val &= ~(3 << g->intr_detection_bit);
-		val &= ~(1 << g->intr_polarity_bit);
-		switch (type) {
-		case IRQ_TYPE_EDGE_RISING:
-			val |= 1 << g->intr_detection_bit;
-			val |= BIT(g->intr_polarity_bit);
-			break;
-		case IRQ_TYPE_EDGE_FALLING:
-			val |= 2 << g->intr_detection_bit;
-			val |= BIT(g->intr_polarity_bit);
-			break;
-		case IRQ_TYPE_EDGE_BOTH:
-			val |= 3 << g->intr_detection_bit;
-			val |= BIT(g->intr_polarity_bit);
-			break;
-		case IRQ_TYPE_LEVEL_LOW:
-			break;
-		case IRQ_TYPE_LEVEL_HIGH:
-			val |= BIT(g->intr_polarity_bit);
-			break;
+			dir_conn_data->chip->irq_mask(dir_conn_data);
 		}
-	} else if (g->intr_detection_width == 1) {
-		val &= ~(1 << g->intr_detection_bit);
-		val &= ~(1 << g->intr_polarity_bit);
-		switch (type) {
-		case IRQ_TYPE_EDGE_RISING:
-			val |= BIT(g->intr_detection_bit);
-			val |= BIT(g->intr_polarity_bit);
-			break;
-		case IRQ_TYPE_EDGE_FALLING:
-			val |= BIT(g->intr_detection_bit);
-			break;
-		case IRQ_TYPE_EDGE_BOTH:
-			val |= BIT(g->intr_detection_bit);
-			val |= BIT(g->intr_polarity_bit);
-			break;
-		case IRQ_TYPE_LEVEL_LOW:
-			break;
-		case IRQ_TYPE_LEVEL_HIGH:
-			val |= BIT(g->intr_polarity_bit);
-			break;
-		}
-	} else {
-		BUG();
+		irq_chip_mask_parent(d);
 	}
-	writel(val, base + g->intr_cfg_reg);
 
 	if (test_bit(d->hwirq, pctrl->wakeup_masked_irqs))
 		return;
